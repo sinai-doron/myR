@@ -14,7 +14,7 @@
 
 - `minSdk 26`, `compileSdk 35`, `targetSdk 35`
 - Kotlin 2.0.0 with the Compose compiler plugin (`org.jetbrains.kotlin.plugin.compose`)
-- Single module (`:app`), package `com.doron.myreceipts`
+- Single module (`:app`), package `com.neonsheep.myreceipts`
 - No INTERNET permission, no network libraries
 - Sideload only — debug signing, no Play Store config
 - ANDROID_HOME is `/opt/homebrew/share/android-commandlinetools`
@@ -57,7 +57,7 @@ myR/
 │   │   │   │   │   └── ic_launcher.webp     (placeholder)
 │   │   │   │   └── drawable/
 │   │   │   │       └── ic_receipt.xml        (vector icon for splash + empty state)
-│   │   │   └── java/com/doron/myreceipts/
+│   │   │   └── java/com/neonsheep/myreceipts/
 │   │   │       ├── MainActivity.kt
 │   │   │       └── ui/
 │   │   │           ├── theme/
@@ -67,7 +67,7 @@ myR/
 │   │   │           └── screens/
 │   │   │               └── CapturedListScreen.kt
 │   │   └── androidTest/
-│   │       └── java/com/doron/myreceipts/ui/screens/
+│   │       └── java/com/neonsheep/myreceipts/ui/screens/
 │   │           └── CapturedListScreenTest.kt
 ```
 
@@ -85,7 +85,7 @@ myR/
 - Create: `app/build.gradle.kts`
 - Create: `app/src/main/AndroidManifest.xml`
 - Create: `app/src/main/res/values/strings.xml`
-- Create: `app/src/main/java/com/doron/myreceipts/MainActivity.kt` (minimal placeholder)
+- Create: `app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt` (minimal placeholder)
 
 **Interfaces:**
 - Consumes: nothing (first task)
@@ -227,11 +227,11 @@ plugins {
 }
 
 android {
-    namespace = "com.doron.myreceipts"
+    namespace = "com.neonsheep.myreceipts"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.doron.myreceipts"
+        applicationId = "com.neonsheep.myreceipts"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -319,10 +319,10 @@ dependencies {
 
 - [ ] **Step 12: Create minimal `MainActivity.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/MainActivity.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt`
 
 ```kotlin
-package com.doron.myreceipts
+package com.neonsheep.myreceipts
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -428,10 +428,10 @@ git commit -m "feat: scaffold Android project with Gradle and splash screen conf
 ### Task 2: Material 3 Theme and Compose Shell
 
 **Files:**
-- Create: `app/src/main/java/com/doron/myreceipts/ui/theme/Color.kt`
-- Create: `app/src/main/java/com/doron/myreceipts/ui/theme/Type.kt`
-- Create: `app/src/main/java/com/doron/myreceipts/ui/theme/Theme.kt`
-- Modify: `app/src/main/java/com/doron/myreceipts/MainActivity.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/ui/theme/Color.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/ui/theme/Type.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/ui/theme/Theme.kt`
+- Modify: `app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt`
 
 **Interfaces:**
 - Consumes: compilable project from Task 1
@@ -439,10 +439,10 @@ git commit -m "feat: scaffold Android project with Gradle and splash screen conf
 
 - [ ] **Step 1: Create `Color.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/ui/theme/Color.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/ui/theme/Color.kt`
 
 ```kotlin
-package com.doron.myreceipts.ui.theme
+package com.neonsheep.myreceipts.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -462,10 +462,10 @@ val GreenGrey90 = Color(0xFFD4E8D5)
 
 - [ ] **Step 2: Create `Type.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/ui/theme/Type.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/ui/theme/Type.kt`
 
 ```kotlin
-package com.doron.myreceipts.ui.theme
+package com.neonsheep.myreceipts.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -502,10 +502,10 @@ val Typography = Typography(
 
 - [ ] **Step 3: Create `Theme.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/ui/theme/Theme.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/ui/theme/Theme.kt`
 
 ```kotlin
-package com.doron.myreceipts.ui.theme
+package com.neonsheep.myreceipts.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -564,10 +564,10 @@ fun MyReceiptsTheme(
 
 - [ ] **Step 4: Update `MainActivity.kt` to use the theme**
 
-File: `app/src/main/java/com/doron/myreceipts/MainActivity.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt`
 
 ```kotlin
-package com.doron.myreceipts
+package com.neonsheep.myreceipts
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -578,7 +578,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.doron.myreceipts.ui.theme.MyReceiptsTheme
+import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -608,7 +608,7 @@ Expected: BUILD SUCCESSFUL.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add app/src/main/java/com/doron/myreceipts/ui/theme/ app/src/main/java/com/doron/myreceipts/MainActivity.kt
+git add app/src/main/java/com/neonsheep/myreceipts/ui/theme/ app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt
 git commit -m "feat: add Material 3 theme with light/dark and dynamic color support"
 ```
 
@@ -617,9 +617,9 @@ git commit -m "feat: add Material 3 theme with light/dark and dynamic color supp
 ### Task 3: CapturedListScreen with Empty State and UI Test
 
 **Files:**
-- Create: `app/src/main/java/com/doron/myreceipts/ui/screens/CapturedListScreen.kt`
-- Create: `app/src/androidTest/java/com/doron/myreceipts/ui/screens/CapturedListScreenTest.kt`
-- Modify: `app/src/main/java/com/doron/myreceipts/MainActivity.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/ui/screens/CapturedListScreen.kt`
+- Create: `app/src/androidTest/java/com/neonsheep/myreceipts/ui/screens/CapturedListScreenTest.kt`
+- Modify: `app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt`
 
 **Interfaces:**
 - Consumes: `MyReceiptsTheme` composable from Task 2
@@ -627,15 +627,15 @@ git commit -m "feat: add Material 3 theme with light/dark and dynamic color supp
 
 - [ ] **Step 1: Write the failing UI test for empty state**
 
-File: `app/src/androidTest/java/com/doron/myreceipts/ui/screens/CapturedListScreenTest.kt`
+File: `app/src/androidTest/java/com/neonsheep/myreceipts/ui/screens/CapturedListScreenTest.kt`
 
 ```kotlin
-package com.doron.myreceipts.ui.screens
+package com.neonsheep.myreceipts.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import com.doron.myreceipts.ui.theme.MyReceiptsTheme
+import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
 import org.junit.Rule
 import org.junit.Test
 
@@ -697,10 +697,10 @@ Expected: compilation error — `CapturedListScreen` and `CapturedReceipt` are n
 
 - [ ] **Step 3: Implement `CapturedReceipt` data class and `CapturedListScreen`**
 
-File: `app/src/main/java/com/doron/myreceipts/ui/screens/CapturedListScreen.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/ui/screens/CapturedListScreen.kt`
 
 ```kotlin
-package com.doron.myreceipts.ui.screens
+package com.neonsheep.myreceipts.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -727,7 +727,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.doron.myreceipts.R
+import com.neonsheep.myreceipts.R
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -838,18 +838,18 @@ private fun formatTimestamp(epochMillis: Long): String {
 
 - [ ] **Step 4: Update `MainActivity.kt` to show `CapturedListScreen`**
 
-File: `app/src/main/java/com/doron/myreceipts/MainActivity.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt`
 
 ```kotlin
-package com.doron.myreceipts
+package com.neonsheep.myreceipts
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.doron.myreceipts.ui.screens.CapturedListScreen
-import com.doron.myreceipts.ui.theme.MyReceiptsTheme
+import com.neonsheep.myreceipts.ui.screens.CapturedListScreen
+import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -889,6 +889,6 @@ Expected: compilation succeeds. The actual UI tests run when sideloaded onto the
 - [ ] **Step 6: Commit**
 
 ```bash
-git add app/src/main/java/com/doron/myreceipts/ app/src/androidTest/
+git add app/src/main/java/com/neonsheep/myreceipts/ app/src/androidTest/
 git commit -m "feat: add CapturedListScreen with empty state and receipt card list"
 ```

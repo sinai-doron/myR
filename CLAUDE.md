@@ -6,16 +6,18 @@ Personal Android app that captures grocery/retail receipt SMS, stores the receip
 
 ## Layout
 
-- `app/` Android app, Kotlin, Compose + Material 3, Room, WorkManager. Package `com.doron.myreceipts`. minSdk 26, target/compile 36.
+- `app/` Android app, Kotlin, Compose + Material 3, Room, WorkManager. Package `com.neonsheep.myreceipts`. minSdk 26, target/compile 37.
 - `backend/` NestJS service: renders a receipt URL to PDF (Puppeteer), extracts data with Gemini on Vertex AI, saves PDFs to local disk. Runs locally only. **The app does not call it yet.**
 - `docs/` ADR, design spec, implementation plans, handover notes.
 
 ## Commands
 
 ```bash
-# Android (from repo root). Use system gradle if ./gradlew fails with an SSL/PKIX error.
+# Android (from repo root). JAVA_HOME = Android Studio JBR. Use system gradle if ./gradlew fails with an SSL/PKIX error.
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 gradle assembleDebug                      # build debug APK
-gradle :app:testDebugUnitTest             # 36 JVM unit tests, all passing at handover
+gradle :app:testDebugUnitTest             # 36 JVM unit tests
+gradle :app:connectedDebugAndroidTest     # 18 instrumented tests (device/emulator)
 gradle :app:installDebug                  # install on connected device/emulator
 
 # Backend (from backend/)

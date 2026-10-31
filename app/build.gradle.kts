@@ -1,22 +1,43 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
 }
 
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
-    namespace = "com.doron.myreceipts"
-    compileSdk = 36
+    namespace = "com.neonsheep.myreceipts"
+    compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.doron.myreceipts"
+        applicationId = "com.neonsheep.myreceipts"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // One fixed debug key, so installing from any computer updates the app in place instead of
+    // requiring an uninstall (which wipes captured receipts). The key stays out of this public
+    // repo: point signing.storeFile in local.properties at it; without it the machine's default
+    // debug key is used.
+    signingConfigs {
+        getByName("debug") {
+            localProps.getProperty("signing.storeFile")?.let { path ->
+                storeFile = file(path)
+                storePassword = localProps.getProperty("signing.storePassword", "android")
+                keyAlias = localProps.getProperty("signing.keyAlias", "androiddebugkey")
+                keyPassword = localProps.getProperty("signing.keyPassword", "android")
+            }
+        }
     }
 
     buildTypes {
@@ -30,12 +51,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -44,9 +67,10 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.core)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.activity.compose)
-implementation(libs.core.splashscreen)
+    implementation(libs.core.splashscreen)
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime.ktx)
 
