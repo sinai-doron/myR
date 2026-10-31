@@ -38,6 +38,9 @@ object PdfStatus {
 
     /** The store no longer has the receipt, e.g. an expired Shufersal link (HTTP 410). */
     const val GONE = "gone"
+
+    /** The background catch-up tried once and the backend couldn't make a PDF. Not retried on its own. */
+    const val FAILED = "failed"
 }
 
 @Dao
@@ -59,6 +62,10 @@ interface ReceiptDao {
 
     @Query("UPDATE captured_receipts SET pdfStatus = :status WHERE clientId = :clientId")
     suspend fun updatePdfStatus(clientId: String, status: String?)
+
+    /** Receipts the background catch-up may try: no PDF and no verdict yet, newest first. */
+    @Query("SELECT * FROM captured_receipts WHERE pdfPath IS NULL AND pdfStatus IS NULL ORDER BY timestamp DESC LIMIT :limit")
+    suspend fun backfillCandidates(limit: Int): List<CapturedReceiptEntity>
 
     @Query("SELECT * FROM captured_receipts WHERE clientId = :clientId LIMIT 1")
     suspend fun getByClientId(clientId: String): CapturedReceiptEntity?

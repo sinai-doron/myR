@@ -178,6 +178,7 @@ internal fun DownloadPill(receipt: CapturedReceipt, hasPdf: Boolean = receipt.ha
         hasPdf -> Pill("PDF saved", PillTone.Green)
         receipt.pdfStatus == PdfStatus.UNSUPPORTED -> Pill("Store not supported yet", PillTone.Grey)
         receipt.pdfStatus == PdfStatus.GONE -> Pill("No longer available", PillTone.Grey)
+        receipt.pdfStatus == PdfStatus.FAILED -> Pill("Couldn't get PDF", PillTone.Grey)
         receipt.isPastDownloadWindow() -> Pill("Link only", PillTone.Grey)
         else -> Pill("Downloading", PillTone.Purple, loading = true)
     }

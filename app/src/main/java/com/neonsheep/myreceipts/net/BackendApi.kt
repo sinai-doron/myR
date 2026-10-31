@@ -46,9 +46,12 @@ class BackendApi(
      * The file is written to a temporary sibling first, so a failed download never leaves a
      * half-written PDF behind.
      */
-    suspend fun downloadReceiptPdf(accessToken: String, receiptUrl: String, target: File) {
+    suspend fun downloadReceiptPdf(accessToken: String, receiptUrl: String, target: File, background: Boolean = false) {
         val body = json.encodeToString(ReceiptPdfRequest(receiptUrl)).toRequestBody(JSON)
-        val request = request("/api/receipts/pdf", accessToken).post(body).build()
+        val request = request("/api/receipts/pdf", accessToken).post(body)
+            // Catch-up of old receipts: the backend may hold these back to keep new receipts fast.
+            .apply { if (background) header("X-Receipt-Priority", "background") }
+            .build()
         call(request, pdfClient()) { response ->
             val type = response.header("Content-Type").orEmpty()
             if (!type.startsWith("application/pdf")) throw BackendException.Http(response.code)

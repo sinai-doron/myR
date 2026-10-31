@@ -177,6 +177,16 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun `catch-up requests say they are background work, new receipts don't`() = runBlocking {
+        signIn()
+        auth.withAccessToken { api.downloadReceiptPdf(it, "https://www.shufersal.co.il/r/new", File(tmp.root, "a.pdf")) }
+        auth.withAccessToken {
+            api.downloadReceiptPdf(it, "https://www.shufersal.co.il/r/old", File(tmp.root, "b.pdf"), background = true)
+        }
+        assertEquals(listOf(null, "background"), backend.priorities.toList())
+    }
+
+    @Test
     fun `a refused receipt link leaves no file behind`() = runBlocking {
         signIn()
         val target = File(tmp.root, "receipts/c-2.pdf")
@@ -205,6 +215,7 @@ class AuthRepositoryTest {
     private class FakeBackend : Dispatcher() {
         val bodies: MutableList<String> = Collections.synchronizedList(mutableListOf())
         val pdfCalls: MutableList<Pair<String?, String>> = Collections.synchronizedList(mutableListOf())
+        val priorities: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         val loggedOutWith: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         val refreshes = AtomicInteger()
         var allowlisted = true
@@ -254,6 +265,7 @@ class AuthRepositoryTest {
                 }
                 "/api/receipts/pdf" -> {
                     pdfCalls += request.headers["Authorization"] to body
+                    priorities += request.headers["X-Receipt-Priority"]
                     when {
                         rateLimited -> MockResponse.Builder().code(429).addHeader("Retry-After", "42").build()
                         !body.contains("shufersal.co.il") -> json("""{"statusCode":400}""", 400)

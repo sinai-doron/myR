@@ -29,12 +29,17 @@ object Backend {
      * Returns the file's path, or null when signed out or the backend couldn't make one.
      * Never logs the link: it can identify the shopper.
      */
-    suspend fun fetchReceiptPdf(context: Context, url: String, clientId: String): Result<String> {
+    suspend fun fetchReceiptPdf(
+        context: Context,
+        url: String,
+        clientId: String,
+        background: Boolean = false,
+    ): Result<String> {
         val auth = auth(context)
         if (auth.currentUser() == null) return Result.failure(BackendException.Unauthorized)
         val target = pdfFile(context, clientId)
         return try {
-            auth.withAccessToken { token -> api.downloadReceiptPdf(token, url, target) }
+            auth.withAccessToken { token -> api.downloadReceiptPdf(token, url, target, background) }
             Log.d(TAG, "Backend PDF saved for $clientId (${target.length()} bytes)")
             Result.success(target.absolutePath)
         } catch (e: BackendException) {

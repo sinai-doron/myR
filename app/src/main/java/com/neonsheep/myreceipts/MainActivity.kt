@@ -17,6 +17,7 @@ import com.neonsheep.myreceipts.auth.SignInFailed
 import com.neonsheep.myreceipts.auth.SignedInUser
 import com.neonsheep.myreceipts.net.BackendException
 import com.neonsheep.myreceipts.ui.screens.SignInScreen
+import com.neonsheep.myreceipts.worker.ReceiptBackfillWorker
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -99,6 +100,8 @@ class MainActivity : ComponentActivity() {
                     val file = Backend.pdfFile(this@MainActivity, r.clientId)
                     if (file.exists()) dao.updatePdfPath(r.clientId, file.absolutePath)
                 }
+            // Old receipts without a PDF: caught up slowly in the background, signed in only.
+            if (auth.currentUser() != null) ReceiptBackfillWorker.start(this@MainActivity)
         }
 
         setContent {
@@ -168,6 +171,7 @@ class MainActivity : ComponentActivity() {
     private suspend fun signIn(auth: AuthRepository): String? = try {
         val google = GoogleIdTokens(this)
         auth.signIn(deviceLabel = Build.MODEL) { nonce -> google.idToken(nonce) }
+        ReceiptBackfillWorker.start(this)
         null
     } catch (e: SignInCancelled) {
         null
