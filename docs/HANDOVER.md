@@ -22,10 +22,10 @@ Authoritative design: `docs/adr/ADR 001 Android SMS Receipt Capture.pdf` (Oct 13
 |---|---|
 | Git | Fresh public history on `main` (earlier private history not published). |
 | Android build | `assembleDebug` succeeds after the 2026-10-31 dependency upgrade; app verified on a Pixel 10 API 37 emulator. |
-| Unit tests | 36 JVM tests pass: ReceiptFilter 12, HeuristicReceiptFilter 14, CompositeReceiptFilter 3, ClientId 4, MerchantConfig 3. |
-| Instrumented tests | 18 pass on a Pixel 10 API 37 emulator (receiver integration, store, list screen), after fixing them for the UI redesign (2026-10-31). |
+| Unit tests | 48 JVM tests pass: ReceiptFilter 12, HeuristicReceiptFilter 14, CompositeReceiptFilter 3, ClientId 4, MerchantConfig 3, AuthRepository 12. |
+| Instrumented tests | 13 pass on a Pixel 10 API 37 emulator (receiver integration, store, list screen, sign-in and PDF screens). |
 | Backend | Builds and starts locally per earlier sessions. **No tests.** Not verified at handover. |
-| App to backend link | **None.** The app contains no backend URL or API key. |
+| App to backend link | Google sign-in and receipt PDFs through doron-backend (2026-10-31), local first. See README "Sign-in and the backend". |
 
 ## 3. Architecture
 
@@ -72,7 +72,7 @@ The ADR and spec were not updated for these. If the ADR matters, amend it.
 1. **PDF download for Shufersal is unreliable.** Shufersal links go through an Angular page (`DIShortcutURL`) that redirects with JavaScript, often failing intermittently ("Response is null"). The download button (`button.iconDownlond`) is found and clicked, but its download did not reach `DownloadListener` (probably a blob or fetch-based download). Injecting JS hooks broke the page, so they were removed. The current mitigation is the `printToPdf` fallback with a minimum-height check and an 8 second debounce for redirects. This was being tested on the Pixel 10 when the session ended. One SuperPharm PDF (from `superpharmstorage.blob.core.windows.net`) was downloaded successfully, so the mechanism works for standard downloads.
 2. **Last test run showed no downloads starting.** On Oct 17 the app was relaunched with a restored DB copy and no downloads began. The suspected cause is the 30-day filter, because the restored receipts were older than 30 days. This was not confirmed. When testing, use receipts from the last 30 days or temporarily raise the cutoff (constants in `SmsBackfill.kt`, `VendorReceiptsScreen.kt`, `ReceiptDetailScreen.kt`; the cutoff is duplicated in three places and should become one constant).
 3. **Other vendors need their own handling:** pairzon links often show an "expired" dialog; wee.ai/Weezmo and Delek need a "view invoice" click first.
-4. **The Android app is not connected to the backend.** Earlier idea: the app downloads the PDF itself (done, see above) and later sends the PDF to the backend for Gemini extraction. The user explicitly chose app-side download first ("download the file using the app and not on a backend").
+4. **Backend link is local only.** Sign-in and PDFs go through doron-backend (2026-10-31). Staging needs the Android client ID added to `GOOGLE_OTHER_CLIENT_IDS` and a deploy with Chrome in the image. Gemini extraction is not wired yet.
 5. **Vertex AI SDK is deprecated.** `@google-cloud/vertexai` should move to `@google/genai`.
 6. **Extraction results have nowhere to land yet.** `CapturedReceiptEntity` needs columns (or a child table) for merchant, items, total, tax, currency. `totalAmount` exists but is not populated.
 7. **Tidy-ups:** stale `GCS_BUCKET` in `backend/.env.example` (storage is local disk now), ADR not updated, no backend tests.

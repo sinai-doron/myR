@@ -11,32 +11,51 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.neonsheep.myreceipts.R
+import com.neonsheep.myreceipts.ui.components.CardTitle
+import com.neonsheep.myreceipts.ui.components.MerchantLogo
+import com.neonsheep.myreceipts.ui.components.SectionCard
+import com.neonsheep.myreceipts.ui.components.Stat
+import com.neonsheep.myreceipts.ui.theme.DangerRed
 import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
+import com.neonsheep.myreceipts.ui.theme.Purple
+import com.neonsheep.myreceipts.ui.theme.PurpleLight
+import com.neonsheep.myreceipts.ui.theme.SuccessGreen
+import java.io.File
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Currency
 import java.util.Date
 import java.util.Locale
@@ -60,7 +79,10 @@ data class VendorSummary(
 fun VendorListScreen(
     receipts: List<CapturedReceipt>,
     onVendorClick: (String) -> Unit = {},
+    accountEmail: String? = null,
+    onSignOut: () -> Unit = {},
 ) {
+    var showAccount by remember { mutableStateOf(false) }
     val vendors = remember(receipts) {
         receipts.groupBy { it.senderLabel }
             .map { (name, items) ->
@@ -73,60 +95,153 @@ fun VendorListScreen(
             .sortedByDescending { it.lastReceiptDate }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Spacer(modifier = Modifier.height(48.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp),
+    ) {
+        // Header, as on gym-tracker's home
+        Row(modifier = Modifier.padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.app_name),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f),
+            )
+            if (accountEmail != null) {
+                AccountButton(email = accountEmail, onClick = { showAccount = true })
+            }
+        }
         Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            if (receipts.isEmpty()) "Receipts from your SMS, in one place"
+            else "${receiptCountLabel(receipts.size)} · ${storeCountLabel(vendors.size)}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
         )
+        Spacer(Modifier.height(20.dp))
+
         if (vendors.isEmpty()) {
             EmptyState()
         } else {
-            VendorList(vendors = vendors, onVendorClick = onVendorClick)
+            MonthCard(receipts)
+            Spacer(Modifier.height(12.dp))
+            SectionCard(padding = 0.dp) {
+                CardTitle(
+                    "🧾 Stores",
+                    trailing = vendors.size.toString(),
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 6.dp),
+                )
+                vendors.forEachIndexed { index, vendor ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 76.dp, end = 20.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+                    VendorRow(vendor = vendor, onClick = { onVendorClick(vendor.name) })
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+    }
+
+    if (showAccount && accountEmail != null) {
+        AlertDialog(
+            onDismissRequest = { showAccount = false },
+            title = { Text("Signed in") },
+            text = { Text(accountEmail) },
+            confirmButton = {
+                TextButton(onClick = { showAccount = false; onSignOut() }) {
+                    Text("Sign out", color = DangerRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAccount = false }) { Text("Close", color = Purple) }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
+    }
+}
+
+/** The signed-in account's initial in a round purple badge; tap for the account and sign-out. */
+@Composable
+private fun AccountButton(email: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(PurpleLight)
+            .clickable(onClick = onClick)
+            .testTag("account"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            email.firstOrNull()?.uppercase() ?: "?",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = Purple,
+        )
+    }
+}
+
+/** This month at a glance: receipts, stores, and how many PDFs are saved on the phone. */
+@Composable
+private fun MonthCard(receipts: List<CapturedReceipt>) {
+    val monthStart = remember {
+        Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+    val thisMonth = remember(receipts) { receipts.filter { it.timestamp >= monthStart } }
+    val saved = remember(receipts) { receipts.count { r -> r.pdfPath?.let { File(it).exists() } == true } }
+    val monthName = remember { SimpleDateFormat("MMMM", Locale.getDefault()).format(Date()) }
+
+    SectionCard {
+        CardTitle("📅 This month", trailing = monthName)
+        Spacer(Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Stat(thisMonth.size.toString(), "receipts", Purple, Modifier.weight(1f))
+            Stat(thisMonth.map { it.senderLabel }.distinct().size.toString(), "stores", Purple, Modifier.weight(1f))
+            Stat(saved.toString(), "PDFs saved", SuccessGreen, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(bottom = 80.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_receipt),
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.outlineVariant,
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = stringResource(R.string.empty_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = stringResource(R.string.empty_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun VendorList(vendors: List<VendorSummary>, onVendorClick: (String) -> Unit) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(vendors, key = { it.name }) { vendor ->
-            VendorRow(vendor = vendor, onClick = { onVendorClick(vendor.name) })
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 76.dp, end = 20.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
+private fun EmptyState() {
+    SectionCard(padding = 28.dp) {
+        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .background(PurpleLight, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                // The app logo in its own colours (tinting flattens it)
+                Image(
+                    painter = painterResource(R.drawable.ic_receipt),
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                stringResource(R.string.empty_title),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.empty_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -137,99 +252,56 @@ private fun VendorRow(vendor: VendorSummary, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MerchantLogo(senderLabel = vendor.name)
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = vendor.name,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                ),
+                vendor.name,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(modifier = Modifier.height(3.dp))
             Text(
-                text = if (vendor.receiptCount == 1) "1 receipt" else "${vendor.receiptCount} receipts",
-                style = MaterialTheme.typography.bodySmall,
+                "${receiptCountLabel(vendor.receiptCount)} · ${formatDate(vendor.lastReceiptDate)}",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Text(
-            text = formatTimestamp(vendor.lastReceiptDate),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
-@Composable
-internal fun MerchantLogo(senderLabel: String) {
-    val logoResId = resolveMerchantLogo(senderLabel)
-    if (logoResId != null) {
-        Image(
-            painter = painterResource(logoResId),
-            contentDescription = senderLabel,
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape),
-        )
-    } else {
-        LetterCircle(letter = senderLabel.firstOrNull()?.uppercase() ?: "?")
-    }
-}
+internal fun receiptCountLabel(count: Int) = if (count == 1) "1 receipt" else "$count receipts"
+private fun storeCountLabel(count: Int) = if (count == 1) "1 store" else "$count stores"
 
-@Composable
-private fun LetterCircle(letter: String) {
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = letter,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp,
-            ),
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-internal fun resolveMerchantLogo(senderLabel: String): Int? {
-    val logoMap = mapOf(
-        "shufersal" to R.drawable.ic_merchant_shufersal,
-        "pairzon" to R.drawable.ic_merchant_pairzon,
-        "osherad" to R.drawable.ic_merchant_pairzon,
-    )
-    return logoMap[senderLabel.lowercase()]
-}
-
-private val timestampFormatter = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+private val timestampFormatter = SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault())
+private val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
 private val amountFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("he-IL")).apply {
     currency = Currency.getInstance("ILS")
 }
 
-internal fun formatTimestamp(epochMillis: Long): String =
-    timestampFormatter.format(Date(epochMillis))
+internal fun formatTimestamp(epochMillis: Long): String = timestampFormatter.format(Date(epochMillis))
+internal fun formatDate(epochMillis: Long): String = dateFormatter.format(Date(epochMillis))
+internal fun formatAmount(amount: Double): String = amountFormatter.format(amount)
 
-internal fun formatAmount(amount: Double): String =
-    amountFormatter.format(amount)
+/** Receipts older than this are kept but never downloaded automatically. */
+internal const val AUTO_DOWNLOAD_WINDOW_MS = 30L * 24 * 60 * 60 * 1000
+
+internal fun CapturedReceipt.hasPdf(): Boolean = pdfPath?.let { File(it).exists() } == true
+internal fun CapturedReceipt.isPastDownloadWindow(): Boolean =
+    System.currentTimeMillis() - timestamp > AUTO_DOWNLOAD_WINDOW_MS
 
 @Preview(showBackground = true)
 @Composable
 private fun PreviewEmpty() {
-    MyReceiptsTheme {
-        VendorListScreen(receipts = emptyList())
-    }
+    MyReceiptsTheme { VendorListScreen(receipts = emptyList()) }
 }
 
 @Preview(showBackground = true)

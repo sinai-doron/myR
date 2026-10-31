@@ -31,7 +31,9 @@ class ReceiptPdfDownloader(private val context: Context) {
         return webViewMutex.withLock {
             val pdfDir = File(context.filesDir, "receipts")
             pdfDir.mkdirs()
-            val pdfFile = File(pdfDir, "$clientId.pdf")
+            // Its own file: the backend may deliver this receipt's PDF while the phone is still
+            // working on it, and the worker keeps whichever arrived first.
+            val pdfFile = File(pdfDir, "$clientId.device.pdf")
 
             val resolvedUrl = resolveRedirects(url) ?: url
             Log.i(TAG, "Resolved URL: $resolvedUrl (from: $url)")
@@ -285,8 +287,7 @@ class ReceiptPdfDownloader(private val context: Context) {
                     }
                 }
 
-                fun doCapture() {
-                    Log.i(TAG, "Print-to-PDF: capturing (url: ${webView.url})")
+                fun captureNow() {
                     webView.evaluateJavascript(HIDE_CLUTTER_JS) {
                         mainHandler.postDelayed({
                             webView.evaluateJavascript("document.body.scrollHeight") { heightStr ->
@@ -305,6 +306,18 @@ class ReceiptPdfDownloader(private val context: Context) {
                                 }, 500)
                             }
                         }, 1000)
+                    }
+                }
+
+                fun doCapture() {
+                    Log.i(TAG, "Print-to-PDF: capturing")
+                    webView.evaluateJavascript("document.body.innerText") { text ->
+                        if (isUnavailablePage(text)) {
+                            Log.w(TAG, "Print-to-PDF: the vendor says this receipt is not available")
+                            finish(null)
+                        } else {
+                            captureNow()
+                        }
                     }
                 }
 

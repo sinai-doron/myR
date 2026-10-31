@@ -7,7 +7,8 @@ Personal Android app that captures grocery/retail receipt SMS, stores the receip
 ## Layout
 
 - `app/` Android app, Kotlin, Compose + Material 3, Room, WorkManager. Package `com.neonsheep.myreceipts`. minSdk 26, target/compile 37.
-- `backend/` NestJS service: renders a receipt URL to PDF (Puppeteer), extracts data with Gemini on Vertex AI, saves PDFs to local disk. Runs locally only. **The app does not call it yet.**
+- Sign-in and receipt PDFs come from **doron-backend** (separate repo, `../doron-backend`): Google sign-in via Credential Manager, then `POST /api/receipts/pdf`. Code in `auth/` and `net/`. See README "Sign-in and the backend".
+- `backend/` the original NestJS service (Puppeteer + Gemini, local only). **The app does not call it**; its PDF rendering moved to doron-backend's receipts app.
 - `docs/` ADR, design spec, implementation plans, handover notes.
 
 ## Commands
@@ -16,8 +17,8 @@ Personal Android app that captures grocery/retail receipt SMS, stores the receip
 # Android (from repo root). JAVA_HOME = Android Studio JBR. Use system gradle if ./gradlew fails with an SSL/PKIX error.
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 gradle assembleDebug                      # build debug APK
-gradle :app:testDebugUnitTest             # 36 JVM unit tests
-gradle :app:connectedDebugAndroidTest     # 18 instrumented tests (device/emulator)
+gradle :app:testDebugUnitTest             # 48 JVM unit tests
+gradle :app:connectedDebugAndroidTest     # 13 instrumented tests per device (ANDROID_SERIAL picks one)
 gradle :app:installDebug                  # install on connected device/emulator
 
 # Backend (from backend/)
@@ -30,7 +31,8 @@ npm ci && npm run build && npm run start:prod   # needs .env, see backend/README
 - The filter is the privacy gate: OTPs, bank alerts and personal SMS must never be stored. `ReceiptFilter` is an interface (domain allowlist + heuristic, composed).
 - Sender label is a routing hint, not a trust signal. Alphanumeric sender IDs are spoofable.
 - Receiver work stays minimal (`goAsync()` plus a quick insert). Network and WebView work goes in WorkManager.
-- The user decided: **run everything locally, no GCP deployment** for now.
+- Backend work happens in doron-backend, local first. Staging (`apps.neonsheep.dev`) changes need the owner's go-ahead.
+- Never log a receipt link, a token or a PDF.
 - Do not commit `backend/.env`, `local.properties`, APKs or `receipts-data/`. They are secrets or machine-specific.
 - The repo is public (MIT). Never commit real receipt links, SMS bodies, device databases or keys.
 

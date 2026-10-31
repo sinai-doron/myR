@@ -1,6 +1,7 @@
 package com.neonsheep.myreceipts.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -307,5 +308,33 @@ class CompositeReceiptFilterTest {
         val result = composite.filter(body, "Promo")
 
         assertTrue(result.matchedLinks.isEmpty())
+    }
+
+    @Test
+    fun weeAi_onlyReceiptPathsAreReceipts() {
+        val config = MerchantConfig(merchants = emptyList(), receiptPlatforms = listOf("wee.ai"))
+        val composite = CompositeReceiptFilter(listOf(DomainMatchFilter(config), HeuristicReceiptFilter()))
+        val body = "חשבונית מרכזה: https://wee.ai/r/Rc123 מבצעים: https://wee.ai/s/Mk456 הסרה: https://wee.ai/u/Un789 https://wee.ai//l/abc https://wee.ai/pages/sph/l"
+
+        val result = composite.filter(body, "Merkaza")
+
+        assertEquals(listOf("https://wee.ai/r/Rc123"), result.matchedLinks)
+    }
+
+    @Test
+    fun weeAi_marketingOnlyTextIsNotCaptured_evenByTheKeywordFallback() {
+        val config = MerchantConfig(merchants = emptyList(), receiptPlatforms = listOf("wee.ai"))
+        val composite = CompositeReceiptFilter(listOf(DomainMatchFilter(config), HeuristicReceiptFilter()))
+        val body = "חודש של מבצעים במרכזה! לתשלום בקופה הציגו: https://wee.ai/s/Mk456 להסרה https://wee.ai/u/Un789"
+
+        assertTrue(composite.filter(body, "Merkaza").matchedLinks.isEmpty())
+    }
+
+    @Test
+    fun receiptLinks_otherHostsAreUnaffected() {
+        assertTrue(ReceiptLinks.isReceipt("https://public.pairzon.com/1267/AbC"))
+        assertTrue(ReceiptLinks.isReceipt("https://www.shufersal.co.il/dishortcuturl/AbC"))
+        assertFalse(ReceiptLinks.isReceipt("https://wee.ai/s/AbC"))
+        assertFalse(ReceiptLinks.isReceipt("not a url"))
     }
 }

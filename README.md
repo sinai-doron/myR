@@ -40,7 +40,26 @@ Android SDK from Android Studio lives at `~/Library/Android/sdk` on macOS.
 - Physical: Pixel 10, paired over wireless debugging (Developer options → Wireless debugging → Pair device with pairing code, then `adb pair <ip>:<port>` and `adb connect <ip>:<port>`). Find yours with `adb devices -l`.
 - Emulator: a Pixel 10 AVD on API 37 (e.g. `gym_pixel10`). `emu sms send` puts messages in the inbox; the inbox backfill picks them up on launch, but the inbox backfill works on the emulator.
 
-## Backend
+## Sign-in and the backend
+
+The app signs in with Google through **doron-backend** (the shared sign-in service at
+`apps.neonsheep.dev`, a separate repo) and asks it to turn receipt links into PDFs
+(`POST /api/receipts/pdf`). Signed out, or when the backend can't make a PDF, the phone falls
+back to downloading the PDF itself.
+
+- **Which backend:** `backend.url` in `local.properties`. Default `http://localhost:7300`, a
+  doron-backend running on this computer, which the phone or emulator reaches through
+  `adb reverse tcp:7300 tcp:7300`. Plain HTTP is allowed only to the phone's own loopback.
+- **Google:** the Android OAuth client is `com.neonsheep.myreceipts` with the fixed debug key's
+  SHA-1 (see Signing). The ID token's audience is doron-backend's web client, set in
+  `app/build.gradle.kts`. doron-backend must list the Android client ID in
+  `GOOGLE_OTHER_CLIENT_IDS`, and your Google account must be on its allowlist
+  (`npm run cli -- users add <email>` there).
+- **Tokens** follow doron-backend's auth design §6: the access token stays in memory, the
+  refresh token is encrypted with Tink under an Android Keystore key, refreshes run one at a
+  time, and the session is excluded from backups.
+
+## The old local backend (`backend/`)
 
 See `backend/README.md`. Short version: copy `backend/.env.example` to `backend/.env`, fill `GCP_PROJECT_ID` and `API_KEY`, then `npm ci && npm run build && npm run start:prod`. Gemini extraction needs Google Cloud credentials on the machine.
 

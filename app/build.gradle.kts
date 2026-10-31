@@ -23,6 +23,18 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // doron-backend (sign-in and receipt PDFs). Defaults to a backend on this computer,
+        // reached from the phone or emulator through `adb reverse tcp:7300 tcp:7300`.
+        // Set backend.url in local.properties to use another one, e.g. https://apps.neonsheep.dev
+        val backendUrl = localProps.getProperty("backend.url", "http://localhost:7300")
+        buildConfigField("String", "BACKEND_URL", "\"${backendUrl.trimEnd('/')}\"")
+        // The backend's web OAuth client: the audience of the Google ID token. Not a secret.
+        buildConfigField(
+            "String",
+            "GOOGLE_WEB_CLIENT_ID",
+            "\"381579861019-jdv1n9tsqhlh40iius7liep7p6co8cun.apps.googleusercontent.com\"",
+        )
     }
 
     // One fixed debug key, so installing from any computer updates the app in place instead of
@@ -53,6 +65,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -80,10 +93,21 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.work.runtime.ktx)
 
+    // Sign-in with Google through doron-backend
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.datastore)
+    implementation(libs.datastore.tink)
+    implementation(libs.tink.android)
+    implementation(libs.okhttp)
+
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockwebserver)
+    testImplementation(libs.coroutines.test)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.ext.junit)
