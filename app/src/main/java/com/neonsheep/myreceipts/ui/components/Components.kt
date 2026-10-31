@@ -175,7 +175,11 @@ fun MerchantLogo(senderLabel: String, size: Dp = 44.dp) {
 }
 
 internal fun resolveMerchantLogo(senderLabel: String): Int? = when (senderLabel.lowercase()) {
-    "shufersal" -> R.drawable.ic_merchant_shufersal
+    "shufersal" -> R.drawable.logo_shufersal
     "pairzon", "osherad" -> R.drawable.ic_merchant_pairzon
+    "ikea" -> R.drawable.ic_merchant_ikea
+    "lego" -> R.drawable.logo_lego
+    "decathlon" -> R.drawable.logo_decathlon
+    "movieland" -> R.drawable.logo_movieland
     else -> null
 }
