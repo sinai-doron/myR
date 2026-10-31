@@ -1,0 +1,22 @@
+{
+  "merchants": [
+    {
+      "name": "Shufersal",
+      "domains": ["shufersal.co.il"],
+      "senderHints": ["Shufersal"],
+      "logo": "ic_merchant_shufersal"
+    },
+    {
+      "name": "Pairzon",
+      "domains": ["pairzon.com"],
+      "senderHints": ["OSHERAD", "Pairzon"],
+      "logo": "ic_merchant_pairzon"
+    }
+  ],
+  "receiptPlatforms": [
+    "wee.ai",
+    "greeninvoice.co.il",
+    "invoice4u.co.il",
+    "icount.co.il"
+  ]
+}

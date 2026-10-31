@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <!-- Shufersal red background -->
+    <path
+        android:fillColor="#CE1141"
+        android:pathData="M20,0C31.05,0 40,8.95 40,20C40,31.05 31.05,40 20,40C8.95,40 0,31.05 0,20C0,8.95 8.95,0 20,0Z" />
+    <!-- Open book - left page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,24 C17,21 8,17 6,11 C5,8 7,6.5 9.5,8 C14,10.5 18,16 20,20 Z" />
+    <!-- Open book - right page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,24 C23,21 32,17 34,11 C35,8 33,6.5 30.5,8 C26,10.5 22,16 20,20 Z" />
+    <!-- Hebrew text שופרסל approximation -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M9,28 L31,28 L31,30 L9,30 Z" />
+</vector>

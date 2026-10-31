@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Local config
+local.properties
+
+# APK
+*.apk
+*.aab
+
+# Superpowers workspace
+.superpowers/
+
+# Claude sandbox
+claude-sandbox/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Never commit pulled device databases
+*.db
+*.db-wal
+*.db-shm
+
+# Kotlin compiler daemon
+.kotlin/
