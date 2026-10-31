@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.neonsheep.myreceipts.auth.Backend
 import com.neonsheep.myreceipts.data.AppDatabase
+import com.neonsheep.myreceipts.data.PdfStatus
 import com.neonsheep.myreceipts.net.BackendException
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -44,8 +45,12 @@ class ReceiptDownloadWorker(
             return Result.success()
         }
         when (val e = fromBackend.exceptionOrNull()) {
-            is BackendException.Http -> if (e.code == 410) {
-                Log.w(TAG, "Receipt $clientId is no longer available from the store")
+            // The store no longer has it, or the backend doesn't serve this store yet (it logs the
+            // site, which e-mails the owner to add it). Either way, don't print a page on the phone:
+            // "Get PDF again" fetches the store's own PDF once the store is added.
+            is BackendException.Http -> if (e.code == 410 || e.code == 400) {
+                dao.updatePdfStatus(clientId, if (e.code == 410) PdfStatus.GONE else PdfStatus.UNSUPPORTED)
+                Log.w(TAG, "No PDF for $clientId from the backend: HTTP ${e.code}")
                 return Result.success()
             }
             else -> Unit

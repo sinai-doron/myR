@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import com.neonsheep.myreceipts.data.PdfStatus
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.Pill
 import com.neonsheep.myreceipts.ui.components.PillTone
@@ -175,6 +176,8 @@ internal fun DownloadPill(receipt: CapturedReceipt, hasPdf: Boolean = receipt.ha
     // hasPdf is a parameter so the pill redraws when the file appears, even if the receipt doesn't change
     when {
         hasPdf -> Pill("PDF saved", PillTone.Green)
+        receipt.pdfStatus == PdfStatus.UNSUPPORTED -> Pill("Store not supported yet", PillTone.Grey)
+        receipt.pdfStatus == PdfStatus.GONE -> Pill("No longer available", PillTone.Grey)
         receipt.isPastDownloadWindow() -> Pill("Link only", PillTone.Grey)
         else -> Pill("Downloading", PillTone.Purple, loading = true)
     }

@@ -33,6 +33,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.neonsheep.myreceipts.data.AppDatabase
 import com.neonsheep.myreceipts.data.CapturedReceiptEntity
+import com.neonsheep.myreceipts.data.PdfStatus
 import com.neonsheep.myreceipts.data.ReceiptLinks
 import com.neonsheep.myreceipts.data.SmsBackfill
 import kotlinx.coroutines.CoroutineScope
@@ -184,17 +185,22 @@ class MainActivity : ComponentActivity() {
     /** Sends the receipt's link to the backend and saves the PDF. Returns an error to show, or null. */
     private suspend fun getPdf(receipt: CapturedReceipt): String? {
         val result = Backend.fetchReceiptPdf(this, receipt.link, receipt.clientId)
+        val dao = AppDatabase.getInstance(this).receiptDao()
         result.getOrNull()?.let { path ->
-            AppDatabase.getInstance(this).receiptDao().updatePdfPath(receipt.clientId, path)
+            dao.updatePdfPath(receipt.clientId, path)
             return null
         }
-        return when (val e = result.exceptionOrNull()) {
+        val e = result.exceptionOrNull()
+        if (e is BackendException.Http && e.code in setOf(400, 410)) {
+            dao.updatePdfStatus(receipt.clientId, if (e.code == 410) PdfStatus.GONE else PdfStatus.UNSUPPORTED)
+        }
+        return when (e) {
             BackendException.Unauthorized -> "You've been signed out. Sign in again."
             is BackendException.Network -> "Can't reach the server. Check your connection and try again."
             is BackendException.RateLimited -> "Too many requests. Try again in ${e.retryAfterSeconds} seconds."
             is BackendException.Http ->
                 if (e.code == 410) "The store no longer has this receipt. Links expire after a while."
-                else if (e.code == 400) "The server doesn't accept links from this store."
+                else if (e.code == 400) "This store isn't supported yet. You'll get an e-mail to add it."
                 else "The server couldn't make a PDF of this receipt."
             else -> "Couldn't get the PDF."
         }
@@ -230,4 +236,5 @@ fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     clientId = clientId,
     totalAmount = totalAmount,
     pdfPath = pdfPath,
+    pdfStatus = pdfStatus,
 )
