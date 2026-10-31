@@ -12,6 +12,11 @@ class UnavailablePagesTest {
     }
 
     @Test
+    fun `Pairzon's expired-token page is recognised`() {
+        assertTrue(isUnavailablePage("\"תאריך סכום לצפייה תוקף הכניסה שלך פג OK לכניסה מחדש\""))
+    }
+
+    @Test
     fun `a real receipt or an empty answer is not`() {
         assertFalse(isUnavailablePage("\"שופרסל בע\\\"מ\\nחשבונית / קבלה\\nלתשלום 121.81\""))
         assertFalse(isUnavailablePage("null"))

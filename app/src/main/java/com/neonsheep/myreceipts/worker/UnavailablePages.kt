@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
  */
 private val UNAVAILABLE_MARKERS = listOf(
     "החשבונית בעיבוד", // Shufersal: "the invoice is being processed"
+    "תוקף הכניסה שלך פג", // Pairzon (MAXstock): "your login has expired"; links last 5 minutes
 )
 
 /** [pageText] is `document.body.innerText`, as WebView's evaluateJavascript hands it back (JSON). */
