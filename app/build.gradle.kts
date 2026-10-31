@@ -24,10 +24,10 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // doron-backend (sign-in and receipt PDFs). Defaults to a backend on this computer,
-        // reached from the phone or emulator through `adb reverse tcp:7300 tcp:7300`.
-        // Set backend.url in local.properties to use another one, e.g. https://apps.neonsheep.dev
-        val backendUrl = localProps.getProperty("backend.url", "http://localhost:7300")
+        // doron-backend (sign-in and receipt PDFs): staging at apps.neonsheep.dev. For a backend
+        // running on this computer set backend.url=http://localhost:7300 in local.properties and
+        // run `adb reverse tcp:7300 tcp:7300`.
+        val backendUrl = localProps.getProperty("backend.url", "https://apps.neonsheep.dev")
         buildConfigField("String", "BACKEND_URL", "\"${backendUrl.trimEnd('/')}\"")
         // The backend's web OAuth client: the audience of the Google ID token. Not a secret.
         buildConfigField(

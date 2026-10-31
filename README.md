@@ -47,8 +47,8 @@ The app signs in with Google through **doron-backend** (the shared sign-in servi
 (`POST /api/receipts/pdf`). Signed out, or when the backend can't make a PDF, the phone falls
 back to downloading the PDF itself.
 
-- **Which backend:** `backend.url` in `local.properties`. Default `http://localhost:7300`, a
-  doron-backend running on this computer, which the phone or emulator reaches through
+- **Which backend:** staging, `https://apps.neonsheep.dev`, by default. To use a doron-backend
+  running on this computer, set `backend.url=http://localhost:7300` in `local.properties` and run
   `adb reverse tcp:7300 tcp:7300`. Plain HTTP is allowed only to the phone's own loopback.
 - **Google:** the Android OAuth client is `com.neonsheep.myreceipts` with the fixed debug key's
   SHA-1 (see Signing). The ID token's audience is doron-backend's web client, set in

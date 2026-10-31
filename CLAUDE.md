@@ -31,7 +31,7 @@ npm ci && npm run build && npm run start:prod   # needs .env, see backend/README
 - The filter is the privacy gate: OTPs, bank alerts and personal SMS must never be stored. `ReceiptFilter` is an interface (domain allowlist + heuristic, composed).
 - Sender label is a routing hint, not a trust signal. Alphanumeric sender IDs are spoofable.
 - Receiver work stays minimal (`goAsync()` plus a quick insert). Network and WebView work goes in WorkManager.
-- Backend work happens in doron-backend, local first. Staging (`apps.neonsheep.dev`) changes need the owner's go-ahead.
+- The app uses doron-backend on staging (`apps.neonsheep.dev`) by default. Backend work happens in doron-backend; staging changes need the owner's go-ahead.
 - Never log a receipt link, a token or a PDF.
 - Do not commit `backend/.env`, `local.properties`, APKs or `receipts-data/`. They are secrets or machine-specific.
 - The repo is public (MIT). Never commit real receipt links, SMS bodies, device databases or keys.
