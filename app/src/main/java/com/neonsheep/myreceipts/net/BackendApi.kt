@@ -99,8 +99,12 @@ class BackendApi(
             }
         }
 
-    // Rendering a receipt takes a headless browser on the server up to ~45 seconds.
-    private fun pdfClient(): OkHttpClient = client.newBuilder().readTimeout(90, TimeUnit.SECONDS).build()
+    // Rendering a receipt takes a headless browser on the server up to ~45 seconds, plus the
+    // server's warm-up when it has scaled to zero (an instance and then Chrome starting).
+    private fun pdfClient(): OkHttpClient = client.newBuilder()
+        .readTimeout(PDF_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .callTimeout(PDF_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build()
 
     @Serializable
     private data class ChallengeRequest(val platform: String)
@@ -140,9 +144,17 @@ class BackendApi(
         private val EMPTY_BODY = ByteArray(0).toRequestBody(null)
         private val json = Json { ignoreUnknownKeys = true }
 
+        // The backend scales to zero, so the first call after a quiet spell waits for a new
+        // instance to start (about 10 seconds on staging, seen up to 24 with Chrome's first
+        // launch). These leave room for that on a slow mobile connection.
+        const val CONNECT_TIMEOUT_SECONDS = 30L
+        const val READ_TIMEOUT_SECONDS = 60L
+        const val PDF_READ_TIMEOUT_SECONDS = 150L
+        const val PDF_CALL_TIMEOUT_SECONDS = 180L
+
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
     }
 }
