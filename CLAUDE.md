@@ -1,6 +1,6 @@
 # My Receipts (myR)
 
-Personal Android app that captures grocery/retail receipt SMS, stores the receipt links on the device, downloads each receipt as a PDF, and (planned) extracts line items with Gemini. Owner: Doron Sinai. Sideloaded, never published to Play Store.
+Android app that keeps the receipts Israeli shops send as SMS links (proof for returns and warranties, before the link expires): it captures the receipt SMS, stores the link on the device and downloads each receipt as a PDF. It does not extract or collect data from messages or receipts. Owner: Doron Sinai. Being prepared for Google Play (personal developer account: closed test with 12+ testers for 14 days before production); sideloaded until then.
 
 **Read `docs/HANDOVER.md` first.** It has current status, known problems, decisions and next steps. `README.md` has machine setup. The source of truth for intent is `docs/adr/ADR 001 Android SMS Receipt Capture.pdf`, then `docs/superpowers/specs/`.
 
@@ -30,6 +30,7 @@ npm ci && npm run build && npm run start:prod   # needs .env, see backend/README
 - **Never store the raw SMS body.** Only extracted links, sender label, timestamp, client id.
 - The filter is the privacy gate: OTPs, bank alerts and personal SMS must never be stored. `ReceiptFilter` is an interface (domain allowlist + heuristic, composed).
 - Sender label is a routing hint, not a trust signal. Alphanumeric sender IDs are spoofable.
+- **The SMS disclosure must stay true.** `SmsDisclosureScreen` (shown before Android's SMS prompt, a Play requirement) says what is read, kept, ignored and sent. Change what the app reads, keeps or sends and you change that screen and the Play SMS declaration in the same change.
 - Receiver work stays minimal (`goAsync()` plus a quick insert). Network and WebView work goes in WorkManager.
 - The app uses doron-backend on staging (`apps.neonsheep.dev`) by default. Backend work happens in doron-backend; staging changes need the owner's go-ahead.
 - Never log a receipt link, a token or a PDF.

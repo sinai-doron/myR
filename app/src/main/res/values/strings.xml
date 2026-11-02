@@ -2,7 +2,6 @@
     <string name="app_name">My Receipts</string>
     <string name="empty_title">No receipts captured yet</string>
     <string name="empty_subtitle">Receipt SMS will appear here automatically</string>
-    <string name="sms_permission_denied">SMS permission is required to capture receipts</string>
     <string name="open_in_browser">Open in Browser</string>
     <string name="label_link">Link</string>
     <string name="label_received">Received</string>

@@ -18,7 +18,10 @@ import com.neonsheep.myreceipts.auth.SignedInUser
 import com.neonsheep.myreceipts.net.BackendException
 import com.neonsheep.myreceipts.ui.screens.SignInScreen
 import com.neonsheep.myreceipts.worker.ReceiptBackfillWorker
-import android.widget.Toast
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import com.neonsheep.myreceipts.ui.screens.SmsDisclosureScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -51,14 +54,18 @@ private val NOT_LOADED = Any()
 
 class MainActivity : ComponentActivity() {
 
+    // Whether receipt texts are captured. Read again on every resume: the permission can be
+    // granted or taken away in Settings while the app is in the background.
+    private val smsGranted = mutableStateOf(false)
+
+    // Our explanation of SMS use (SmsDisclosureScreen), which always comes before Android's prompt.
+    private val disclosureOpen = mutableStateOf(false)
+
     private val smsPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
-        val receiveGranted = permissions[Manifest.permission.RECEIVE_SMS] == true
         val readGranted = permissions[Manifest.permission.READ_SMS] == true
-        if (!receiveGranted) {
-            Toast.makeText(this, getString(R.string.sms_permission_denied), Toast.LENGTH_LONG).show()
-        }
+        smsGranted.value = hasSmsPermissions()
         if (readGranted) {
             val dao = AppDatabase.getInstance(this).receiptDao()
             CoroutineScope(Dispatchers.IO).launch {
@@ -75,7 +82,10 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
-        requestSmsPermissionIfNeeded()
+        smsGranted.value = hasSmsPermissions()
+        // First launch: explain before anything asks. After "Not now", the list's banner offers it.
+        disclosureOpen.value = !smsGranted.value && !prefs().getBoolean(KEY_DISCLOSURE_SEEN, false)
+        if (smsGranted.value) backfillInboxIfNeeded()
 
         val dao = AppDatabase.getInstance(this).receiptDao()
         val receiptsFlow = dao.getAll().map { entities ->
@@ -117,6 +127,18 @@ class MainActivity : ComponentActivity() {
             MyReceiptsTheme {
                 val signedIn = user as? SignedInUser
                 when {
+                    // Before sign-in too, so anyone opening the app sees it before any SMS prompt.
+                    disclosureOpen.value -> SmsDisclosureScreen(
+                        onContinue = {
+                            disclosureOpen.value = false
+                            prefs().edit().putBoolean(KEY_DISCLOSURE_SEEN, true).apply()
+                            requestSmsPermissions()
+                        },
+                        onNotNow = {
+                            disclosureOpen.value = false
+                            prefs().edit().putBoolean(KEY_DISCLOSURE_SEEN, true).apply()
+                        },
+                    )
                     user === NOT_LOADED -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                     signedIn == null -> SignInScreen(
                         signingIn = signingIn,
@@ -154,6 +176,8 @@ class MainActivity : ComponentActivity() {
                             receipts = receipts,
                             onVendorClick = { selectedVendor = it },
                             accountEmail = signedIn.email,
+                            captureOff = !smsGranted.value,
+                            onTurnOnCapture = { disclosureOpen.value = true },
                             onSignOut = {
                                 scope.launch {
                                     auth.signOut()
@@ -210,26 +234,49 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestSmsPermissionIfNeeded() {
-        val needed = mutableListOf<String>()
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            needed.add(Manifest.permission.RECEIVE_SMS)
+    override fun onResume() {
+        super.onResume()
+        val was = smsGranted.value
+        smsGranted.value = hasSmsPermissions()
+        if (!was && smsGranted.value) backfillInboxIfNeeded()
+    }
+
+    private fun prefs() = getSharedPreferences(PREFS, MODE_PRIVATE)
+
+    private fun hasSmsPermissions(): Boolean = SMS_PERMISSIONS.all {
+        ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Android's prompt, or the app's settings page once Android won't show the prompt any more
+     * (refused twice): asked before, and no rationale to show means it was refused for good.
+     */
+    private fun requestSmsPermissions() {
+        val askedBefore = prefs().getBoolean(KEY_ASKED, false)
+        val promptBlocked = askedBefore && SMS_PERMISSIONS.none { shouldShowRequestPermissionRationale(it) }
+        if (promptBlocked) {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
+            )
+        } else {
+            prefs().edit().putBoolean(KEY_ASKED, true).apply()
+            smsPermissionLauncher.launch(SMS_PERMISSIONS)
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            needed.add(Manifest.permission.READ_SMS)
+    }
+
+    private fun backfillInboxIfNeeded() {
+        if (SmsBackfill.isBackfillDone(this)) return
+        val dao = AppDatabase.getInstance(this).receiptDao()
+        CoroutineScope(Dispatchers.IO).launch {
+            SmsBackfill.backfillIfNeeded(this@MainActivity, dao)
         }
-        if (needed.isNotEmpty()) {
-            smsPermissionLauncher.launch(needed.toTypedArray())
-        } else if (!SmsBackfill.isBackfillDone(this)) {
-            val dao = AppDatabase.getInstance(this).receiptDao()
-            CoroutineScope(Dispatchers.IO).launch {
-                SmsBackfill.backfillIfNeeded(this@MainActivity, dao)
-            }
-        }
+    }
+
+    private companion object {
+        val SMS_PERMISSIONS = arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
+        const val PREFS = "sms_disclosure"
+        const val KEY_DISCLOSURE_SEEN = "seen"
+        const val KEY_ASKED = "asked"
     }
 }
 

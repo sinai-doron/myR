@@ -82,6 +82,8 @@ fun VendorListScreen(
     onVendorClick: (String) -> Unit = {},
     accountEmail: String? = null,
     onSignOut: () -> Unit = {},
+    captureOff: Boolean = false,
+    onTurnOnCapture: () -> Unit = {},
 ) {
     var showAccount by remember { mutableStateOf(false) }
     val vendors = remember(receipts) {
@@ -125,6 +127,11 @@ fun VendorListScreen(
             modifier = Modifier.padding(top = 4.dp),
         )
         Spacer(Modifier.height(20.dp))
+
+        if (captureOff) {
+            CaptureOffBanner(onTurnOn = onTurnOnCapture)
+            Spacer(Modifier.height(12.dp))
+        }
 
         if (vendors.isEmpty()) {
             EmptyState()
