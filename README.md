@@ -35,6 +35,23 @@ Android SDK from Android Studio lives at `~/Library/Android/sdk` on macOS.
    If the wrapper fails with a PKIX/SSL error (e.g. behind a TLS-inspecting corporate proxy), use system Gradle 9.8.2: `gradle assembleDebug :app:testDebugUnitTest`.
 5. Install: `adb install -r app/build/outputs/apk/debug/app-debug.apk`. The app asks for SMS permission on first launch, then backfills receipts from the SMS inbox.
 
+### Release builds (Play)
+
+`./gradlew bundleRelease` makes the AAB to upload to Play; it is shrunk with R8 and always
+talks to `https://apps.neonsheep.dev`. It is signed with the Play **upload key**, which lives
+outside this repo. Point at it in `local.properties`:
+
+```
+release.storeFile=/path/to/myr-upload.jks
+release.storePassword=…
+release.keyAlias=myr-upload
+release.keyPassword=…
+```
+
+Without those lines the release build is left unsigned rather than signed with a debug key.
+Play App Signing holds the key installs are actually signed with; a lost upload key can be
+reset through Play Console, but keep the file and password backed up together.
+
 ## Devices used
 
 - Physical: Pixel 10, paired over wireless debugging (Developer options → Wireless debugging → Pair device with pairing code, then `adb pair <ip>:<port>` and `adb connect <ip>:<port>`). Find yours with `adb devices -l`.

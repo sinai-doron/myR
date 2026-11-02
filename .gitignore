@@ -31,3 +31,7 @@ claude-sandbox/
 
 # Kotlin compiler daemon
 .kotlin/
+
+# Signing keys never belong in this public repo
+*.jks
+*.keystore

@@ -42,6 +42,17 @@ android {
     // repo: point signing.storeFile in local.properties at it; without it the machine's default
     // debug key is used.
     signingConfigs {
+        // The Play upload key. Play App Signing holds the key users' installs are signed with;
+        // this one only proves uploads come from us, and Google can reset it if it is lost.
+        // It lives outside this public repo: release.* in local.properties points at it.
+        localProps.getProperty("release.storeFile")?.let { path ->
+            create("release") {
+                storeFile = file(path)
+                storePassword = localProps.getProperty("release.storePassword")
+                keyAlias = localProps.getProperty("release.keyAlias")
+                keyPassword = localProps.getProperty("release.keyPassword")
+            }
+        }
         getByName("debug") {
             localProps.getProperty("signing.storeFile")?.let { path ->
                 storeFile = file(path)
@@ -54,7 +65,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Unsigned without the upload key, so a release can't be built by accident with a
+            // debug key; the build says so rather than producing something Play would refuse.
+            signingConfig = signingConfigs.findByName("release")
+            // Releases always talk to the hosted backend, whatever local.properties says.
+            buildConfigField("String", "BACKEND_URL", "\"https://apps.neonsheep.dev\"")
         }
     }
 
@@ -101,6 +119,8 @@ dependencies {
     implementation(libs.datastore.tink)
     implementation(libs.tink.android)
     implementation(libs.okhttp)
+    // Play services auth pulls in an old Fragment; ActivityResult APIs need 1.3+ (lint, release)
+    implementation(libs.fragment)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
