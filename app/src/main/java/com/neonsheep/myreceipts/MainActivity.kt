@@ -36,6 +36,13 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.neonsheep.myreceipts.data.AppDatabase
+import com.neonsheep.myreceipts.data.BudgetEntity
+import com.neonsheep.myreceipts.data.Category
+import com.neonsheep.myreceipts.data.Spend
+import com.neonsheep.myreceipts.data.Spending
+import com.neonsheep.myreceipts.data.StoreCategoryEntity
+import com.neonsheep.myreceipts.ui.screens.SpendingScreen
+import java.time.YearMonth
 import com.neonsheep.myreceipts.data.ReceiptAmounts
 import com.neonsheep.myreceipts.data.CapturedReceiptEntity
 import com.neonsheep.myreceipts.data.PdfStatus
@@ -93,6 +100,7 @@ class MainActivity : ComponentActivity() {
             entities.map { it.toUiModel() }
         }
 
+        val spendingDao = AppDatabase.getInstance(this).spendingDao()
         val auth = Backend.auth(this)
 
         // Link PDFs that are on the phone but not yet on their receipt (saved while the app was
@@ -119,6 +127,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val receipts by receiptsFlow.collectAsState(initial = emptyList())
+            val storeCategories by spendingDao.storeCategories()
+                .map { list -> list.associate { it.senderLabel to it.category } }
+                .collectAsState(initial = emptyMap())
+            val budgets by spendingDao.budgets()
+                .map { list -> list.associate { it.category to it.monthlyLimit } }
+                .collectAsState(initial = emptyMap())
+            // The month the spending screen shows; null while it is closed.
+            var spendingMonth by remember { mutableStateOf<YearMonth?>(null) }
             // NOT_LOADED until the encrypted session has been read, so the sign-in screen doesn't flash
             val user by auth.user.map<SignedInUser?, Any?> { it }.collectAsState(initial = NOT_LOADED)
             var signingIn by remember { mutableStateOf(false) }
@@ -163,6 +179,30 @@ class MainActivity : ComponentActivity() {
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
                         )
                     }
+                    spendingMonth != null -> {
+                        val month = spendingMonth!!
+                        val categoryOf = { store: String ->
+                            Category.fromName(storeCategories[store]) ?: Category.guessFor(store)
+                        }
+                        SpendingScreen(
+                            spending = Spending.forMonth(
+                                month,
+                                receipts.map { Spend(it.senderLabel, it.timestamp, it.totalAmount) },
+                                categoryOf,
+                            ),
+                            budgets = budgets,
+                            isCurrentMonth = month >= YearMonth.now(),
+                            onMonth = { spendingMonth = it },
+                            onBack = { spendingMonth = null },
+                            onSetBudget = { category, limit ->
+                                if (limit == null) spendingDao.removeBudget(category)
+                                else spendingDao.setBudget(BudgetEntity(category, limit))
+                            },
+                            onSetCategory = { store, category ->
+                                spendingDao.setStoreCategory(StoreCategoryEntity(store, category.name))
+                            },
+                        )
+                    }
                     selectedVendor != null -> {
                         val vendorReceipts = receipts.filter { it.senderLabel == selectedVendor }
                         VendorReceiptsScreen(
@@ -182,6 +222,8 @@ class MainActivity : ComponentActivity() {
                             accountEmail = signedIn.email,
                             captureOff = !smsGranted.value,
                             onTurnOnCapture = { disclosureOpen.value = true },
+                            monthBudget = budgets[BudgetEntity.ALL],
+                            onOpenSpending = { spendingMonth = YearMonth.now() },
                             onSignOut = {
                                 scope.launch {
                                     auth.signOut()

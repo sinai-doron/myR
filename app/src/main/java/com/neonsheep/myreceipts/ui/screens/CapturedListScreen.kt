@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.neonsheep.myreceipts.R
+import com.neonsheep.myreceipts.data.BudgetStatus
 import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.SectionCard
@@ -85,6 +86,9 @@ fun VendorListScreen(
     onSignOut: () -> Unit = {},
     captureOff: Boolean = false,
     onTurnOnCapture: () -> Unit = {},
+    /** The whole-month budget, if one is set. */
+    monthBudget: Double? = null,
+    onOpenSpending: () -> Unit = {},
 ) {
     var showAccount by remember { mutableStateOf(false) }
     val vendors = remember(receipts) {
@@ -137,7 +141,7 @@ fun VendorListScreen(
         if (vendors.isEmpty()) {
             EmptyState()
         } else {
-            MonthCard(receipts)
+            MonthCard(receipts, monthBudget, onOpenSpending)
             Spacer(Modifier.height(12.dp))
             SectionCard(padding = 0.dp) {
                 CardTitle(
@@ -198,9 +202,9 @@ private fun AccountButton(email: String, onClick: () -> Unit) {
     }
 }
 
-/** This month at a glance: receipts, stores, and how many PDFs are saved on the phone. */
+/** This month at a glance: receipts, what they came to, and the budget. Tap for the spending screen. */
 @Composable
-private fun MonthCard(receipts: List<CapturedReceipt>) {
+private fun MonthCard(receipts: List<CapturedReceipt>, budget: Double?, onClick: () -> Unit) {
     val monthStart = remember {
         Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
@@ -208,16 +212,26 @@ private fun MonthCard(receipts: List<CapturedReceipt>) {
         }.timeInMillis
     }
     val thisMonth = remember(receipts) { receipts.filter { it.timestamp >= monthStart } }
-    val saved = remember(receipts) { receipts.count { r -> r.pdfPath?.let { File(it).exists() } == true } }
+    val spent = remember(receipts) { Math.round(thisMonth.sumOf { it.totalAmount ?: 0.0 } * 100) / 100.0 }
     val monthName = remember { SimpleDateFormat("MMMM", Locale.getDefault()).format(Date()) }
 
-    SectionCard {
+    SectionCard(modifier = Modifier.clickable(onClick = onClick).testTag("month_card")) {
         CardTitle("📅 This month", trailing = monthName)
         Spacer(Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             Stat(thisMonth.size.toString(), "receipts", Purple, Modifier.weight(1f))
             Stat(thisMonth.map { it.senderLabel }.distinct().size.toString(), "stores", Purple, Modifier.weight(1f))
-            Stat(saved.toString(), "PDFs saved", SuccessGreen, Modifier.weight(1f))
+            Stat(formatWholeAmount(spent), "spent", SuccessGreen, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(12.dp))
+        if (budget != null) {
+            BudgetBar(BudgetStatus(spent, budget), onClick = onClick)
+        } else {
+            Text(
+                "See spending and set a budget ›",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Purple,
+            )
         }
     }
 }
@@ -299,6 +313,14 @@ private val amountFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguag
 internal fun formatTimestamp(epochMillis: Long): String = timestampFormatter.format(Date(epochMillis))
 internal fun formatDate(epochMillis: Long): String = dateFormatter.format(Date(epochMillis))
 internal fun formatAmount(amount: Double): String = amountFormatter.format(amount)
+
+private val wholeAmountFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("he-IL")).apply {
+    currency = Currency.getInstance("ILS")
+    maximumFractionDigits = 0
+}
+
+/** Rounded to whole shekels, for a tile with little room. */
+internal fun formatWholeAmount(amount: Double): String = wholeAmountFormatter.format(amount)
 
 /** Receipts older than this are kept but never downloaded automatically. */
 internal const val AUTO_DOWNLOAD_WINDOW_MS = 30L * 24 * 60 * 60 * 1000
