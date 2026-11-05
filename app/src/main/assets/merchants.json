@@ -4,7 +4,7 @@
       "name": "Shufersal",
       "domains": ["shufersal.co.il"],
       "senderHints": ["Shufersal"],
-      "logo": "ic_merchant_shufersal"
+      "logo": "logo_shufersal"
     },
     {
       "name": "Pairzon",
@@ -17,6 +17,7 @@
     "wee.ai",
     "greeninvoice.co.il",
     "invoice4u.co.il",
-    "icount.co.il"
+    "icount.co.il",
+    "tbit.be"
   ]
 }

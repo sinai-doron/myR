@@ -6,5 +6,7 @@
         <item name="postSplashScreenTheme">@style/Theme.MyReceipts</item>
     </style>
 
-    <style name="Theme.MyReceipts" parent="android:Theme.Material.NoActionBar" />
+    <style name="Theme.MyReceipts" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/app_background</item>
+    </style>
 </resources>

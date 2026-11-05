@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - `minSdk 26`, `compileSdk 36`, `targetSdk 36`
-- Package `com.doron.myreceipts`, single `:app` module
+- Package `com.neonsheep.myreceipts`, single `:app` module
 - No `INTERNET` permission — nothing leaves the device
 - Raw message body is NEVER stored — only extracted links
 - Only on-list links stored (not off-list links from the same message)
@@ -42,7 +42,7 @@ app/
 │   │   ├── AndroidManifest.xml                   (modify: add RECEIVE_SMS, receiver)
 │   │   ├── assets/
 │   │   │   └── merchants.json                    (create: domain allowlist)
-│   │   └── java/com/doron/myreceipts/
+│   │   └── java/com/neonsheep/myreceipts/
 │   │       ├── data/
 │   │       │   ├── MerchantConfig.kt             (create: config data + JSON loading)
 │   │       │   ├── ReceiptFilter.kt              (create: interface + DomainMatchFilter)
@@ -53,11 +53,11 @@ app/
 │   │       ├── MainActivity.kt                   (modify: observe Room Flow)
 │   │       └── ui/screens/
 │   │           └── CapturedListScreen.kt         (unchanged)
-│   ├── test/java/com/doron/myreceipts/data/
+│   ├── test/java/com/neonsheep/myreceipts/data/
 │   │   ├── MerchantConfigTest.kt                 (create: JVM unit test)
 │   │   ├── ReceiptFilterTest.kt                  (create: JVM unit test)
 │   │   └── ClientIdTest.kt                       (create: JVM unit test)
-│   └── androidTest/java/com/doron/myreceipts/
+│   └── androidTest/java/com/neonsheep/myreceipts/
 │       └── data/
 │           └── ReceiptCaptureIntegrationTest.kt   (create: Room + handler test)
 ```
@@ -75,8 +75,8 @@ Also modify:
 - Modify: `build.gradle.kts` (root)
 - Modify: `app/build.gradle.kts`
 - Create: `app/src/main/assets/merchants.json`
-- Create: `app/src/main/java/com/doron/myreceipts/data/MerchantConfig.kt`
-- Create: `app/src/test/java/com/doron/myreceipts/data/MerchantConfigTest.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/data/MerchantConfig.kt`
+- Create: `app/src/test/java/com/neonsheep/myreceipts/data/MerchantConfigTest.kt`
 
 **Interfaces:**
 - Consumes: existing Gradle build from skeleton plan
@@ -84,10 +84,10 @@ Also modify:
 
 - [ ] **Step 1: Write the failing MerchantConfig unit test**
 
-File: `app/src/test/java/com/doron/myreceipts/data/MerchantConfigTest.kt`
+File: `app/src/test/java/com/neonsheep/myreceipts/data/MerchantConfigTest.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -139,7 +139,7 @@ class MerchantConfigTest {
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-gradle test --tests "com.doron.myreceipts.data.MerchantConfigTest" 2>&1 | tail -10
+gradle test --tests "com.neonsheep.myreceipts.data.MerchantConfigTest" 2>&1 | tail -10
 ```
 
 Expected: compilation error — `MerchantConfig` not defined.
@@ -223,10 +223,10 @@ File: `app/src/main/assets/merchants.json`
 
 - [ ] **Step 7: Implement `MerchantConfig.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/data/MerchantConfig.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/data/MerchantConfig.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import android.content.Context
 import kotlinx.serialization.Serializable
@@ -260,7 +260,7 @@ data class MerchantConfig(
 - [ ] **Step 8: Run tests to verify they pass**
 
 ```bash
-gradle test --tests "com.doron.myreceipts.data.MerchantConfigTest" 2>&1 | tail -10
+gradle test --tests "com.neonsheep.myreceipts.data.MerchantConfigTest" 2>&1 | tail -10
 ```
 
 Expected: 3 tests PASSED.
@@ -278,8 +278,8 @@ Expected: BUILD SUCCESSFUL.
 ```bash
 git add gradle/libs.versions.toml build.gradle.kts app/build.gradle.kts \
   app/src/main/assets/merchants.json \
-  app/src/main/java/com/doron/myreceipts/data/MerchantConfig.kt \
-  app/src/test/java/com/doron/myreceipts/data/MerchantConfigTest.kt
+  app/src/main/java/com/neonsheep/myreceipts/data/MerchantConfig.kt \
+  app/src/test/java/com/neonsheep/myreceipts/data/MerchantConfigTest.kt
 git commit -m "feat: add MerchantConfig with bundled domain allowlist and build deps"
 ```
 
@@ -288,8 +288,8 @@ git commit -m "feat: add MerchantConfig with bundled domain allowlist and build 
 ### Task 2: ReceiptFilter
 
 **Files:**
-- Create: `app/src/main/java/com/doron/myreceipts/data/ReceiptFilter.kt`
-- Create: `app/src/test/java/com/doron/myreceipts/data/ReceiptFilterTest.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/data/ReceiptFilter.kt`
+- Create: `app/src/test/java/com/neonsheep/myreceipts/data/ReceiptFilterTest.kt`
 
 **Interfaces:**
 - Consumes: `MerchantConfig` from Task 1 — `MerchantConfig(merchants)`, `getAllDomains(): Set<String>`
@@ -297,10 +297,10 @@ git commit -m "feat: add MerchantConfig with bundled domain allowlist and build 
 
 - [ ] **Step 1: Write the failing ReceiptFilter unit tests**
 
-File: `app/src/test/java/com/doron/myreceipts/data/ReceiptFilterTest.kt`
+File: `app/src/test/java/com/neonsheep/myreceipts/data/ReceiptFilterTest.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -420,17 +420,17 @@ class ReceiptFilterTest {
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-gradle test --tests "com.doron.myreceipts.data.ReceiptFilterTest" 2>&1 | tail -10
+gradle test --tests "com.neonsheep.myreceipts.data.ReceiptFilterTest" 2>&1 | tail -10
 ```
 
 Expected: compilation error — `ReceiptFilter`, `DomainMatchFilter`, `FilterResult` not defined.
 
 - [ ] **Step 3: Implement `ReceiptFilter.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/data/ReceiptFilter.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/data/ReceiptFilter.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import java.net.URI
 
@@ -477,7 +477,7 @@ class DomainMatchFilter(config: MerchantConfig) : ReceiptFilter {
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-gradle test --tests "com.doron.myreceipts.data.ReceiptFilterTest" 2>&1 | tail -15
+gradle test --tests "com.neonsheep.myreceipts.data.ReceiptFilterTest" 2>&1 | tail -15
 ```
 
 Expected: 10 tests PASSED.
@@ -485,8 +485,8 @@ Expected: 10 tests PASSED.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/src/main/java/com/doron/myreceipts/data/ReceiptFilter.kt \
-  app/src/test/java/com/doron/myreceipts/data/ReceiptFilterTest.kt
+git add app/src/main/java/com/neonsheep/myreceipts/data/ReceiptFilter.kt \
+  app/src/test/java/com/neonsheep/myreceipts/data/ReceiptFilterTest.kt
 git commit -m "feat: add ReceiptFilter interface with domain-match implementation"
 ```
 
@@ -495,10 +495,10 @@ git commit -m "feat: add ReceiptFilter interface with domain-match implementatio
 ### Task 3: ReceiptStore (Room) and ClientId
 
 **Files:**
-- Create: `app/src/main/java/com/doron/myreceipts/data/ClientId.kt`
-- Create: `app/src/main/java/com/doron/myreceipts/data/ReceiptStore.kt`
-- Create: `app/src/test/java/com/doron/myreceipts/data/ClientIdTest.kt`
-- Create: `app/src/androidTest/java/com/doron/myreceipts/data/ReceiptStoreTest.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/data/ClientId.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/data/ReceiptStore.kt`
+- Create: `app/src/test/java/com/neonsheep/myreceipts/data/ClientIdTest.kt`
+- Create: `app/src/androidTest/java/com/neonsheep/myreceipts/data/ReceiptStoreTest.kt`
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks (standalone persistence layer)
@@ -506,10 +506,10 @@ git commit -m "feat: add ReceiptFilter interface with domain-match implementatio
 
 - [ ] **Step 1: Write the failing ClientId unit test**
 
-File: `app/src/test/java/com/doron/myreceipts/data/ClientIdTest.kt`
+File: `app/src/test/java/com/neonsheep/myreceipts/data/ClientIdTest.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -550,17 +550,17 @@ class ClientIdTest {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-gradle test --tests "com.doron.myreceipts.data.ClientIdTest" 2>&1 | tail -10
+gradle test --tests "com.neonsheep.myreceipts.data.ClientIdTest" 2>&1 | tail -10
 ```
 
 Expected: compilation error — `generateClientId` not defined.
 
 - [ ] **Step 3: Implement `ClientId.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/data/ClientId.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/data/ClientId.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import java.util.UUID
 
@@ -572,17 +572,17 @@ fun generateClientId(link: String, timestamp: Long): String {
 - [ ] **Step 4: Run ClientId tests to verify they pass**
 
 ```bash
-gradle test --tests "com.doron.myreceipts.data.ClientIdTest" 2>&1 | tail -10
+gradle test --tests "com.neonsheep.myreceipts.data.ClientIdTest" 2>&1 | tail -10
 ```
 
 Expected: 4 tests PASSED.
 
 - [ ] **Step 5: Write the Room store instrumented test**
 
-File: `app/src/androidTest/java/com/doron/myreceipts/data/ReceiptStoreTest.kt`
+File: `app/src/androidTest/java/com/neonsheep/myreceipts/data/ReceiptStoreTest.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import android.content.Context
 import androidx.room.Room
@@ -694,10 +694,10 @@ Expected: compilation error — `AppDatabase`, `ReceiptDao`, `CapturedReceiptEnt
 
 - [ ] **Step 7: Implement `ReceiptStore.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/data/ReceiptStore.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/data/ReceiptStore.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import android.content.Context
 import androidx.room.ColumnInfo
@@ -762,7 +762,7 @@ abstract class AppDatabase : RoomDatabase() {
 - [ ] **Step 8: Run JVM tests (ClientId)**
 
 ```bash
-gradle test --tests "com.doron.myreceipts.data.ClientIdTest" 2>&1 | tail -10
+gradle test --tests "com.neonsheep.myreceipts.data.ClientIdTest" 2>&1 | tail -10
 ```
 
 Expected: 4 tests PASSED.
@@ -770,7 +770,7 @@ Expected: 4 tests PASSED.
 - [ ] **Step 9: Run instrumented tests (requires emulator)**
 
 ```bash
-gradle connectedDebugAndroidTest --tests "com.doron.myreceipts.data.ReceiptStoreTest" 2>&1 | tail -15
+gradle connectedDebugAndroidTest --tests "com.neonsheep.myreceipts.data.ReceiptStoreTest" 2>&1 | tail -15
 ```
 
 If no emulator is running, verify compilation:
@@ -783,10 +783,10 @@ Expected: BUILD SUCCESSFUL (compilation). If emulator available: 3 tests PASSED.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add app/src/main/java/com/doron/myreceipts/data/ClientId.kt \
-  app/src/main/java/com/doron/myreceipts/data/ReceiptStore.kt \
-  app/src/test/java/com/doron/myreceipts/data/ClientIdTest.kt \
-  app/src/androidTest/java/com/doron/myreceipts/data/ReceiptStoreTest.kt
+git add app/src/main/java/com/neonsheep/myreceipts/data/ClientId.kt \
+  app/src/main/java/com/neonsheep/myreceipts/data/ReceiptStore.kt \
+  app/src/test/java/com/neonsheep/myreceipts/data/ClientIdTest.kt \
+  app/src/androidTest/java/com/neonsheep/myreceipts/data/ReceiptStoreTest.kt
 git commit -m "feat: add Room store with CapturedReceiptEntity, DAO, and clientId generation"
 ```
 
@@ -795,9 +795,9 @@ git commit -m "feat: add Room store with CapturedReceiptEntity, DAO, and clientI
 ### Task 4: SmsReceiver and Manifest
 
 **Files:**
-- Create: `app/src/main/java/com/doron/myreceipts/receiver/SmsReceiver.kt`
+- Create: `app/src/main/java/com/neonsheep/myreceipts/receiver/SmsReceiver.kt`
 - Modify: `app/src/main/AndroidManifest.xml`
-- Create: `app/src/androidTest/java/com/doron/myreceipts/data/ReceiptCaptureIntegrationTest.kt`
+- Create: `app/src/androidTest/java/com/neonsheep/myreceipts/data/ReceiptCaptureIntegrationTest.kt`
 
 **Interfaces:**
 - Consumes: `MerchantConfig.load(context)` from Task 1, `DomainMatchFilter(config)` and `FilterResult` from Task 2, `AppDatabase.getInstance(context)`, `ReceiptDao.insert(entity)`, `CapturedReceiptEntity`, `generateClientId(link, timestamp)` from Task 3.
@@ -805,16 +805,16 @@ git commit -m "feat: add Room store with CapturedReceiptEntity, DAO, and clientI
 
 - [ ] **Step 1: Write the failing integration test**
 
-File: `app/src/androidTest/java/com/doron/myreceipts/data/ReceiptCaptureIntegrationTest.kt`
+File: `app/src/androidTest/java/com/neonsheep/myreceipts/data/ReceiptCaptureIntegrationTest.kt`
 
 ```kotlin
-package com.doron.myreceipts.data
+package com.neonsheep.myreceipts.data
 
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.doron.myreceipts.receiver.ReceiptCaptureHandler
+import com.neonsheep.myreceipts.receiver.ReceiptCaptureHandler
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -929,21 +929,21 @@ Expected: compilation error — `ReceiptCaptureHandler` not defined.
 
 - [ ] **Step 3: Implement `SmsReceiver.kt`**
 
-File: `app/src/main/java/com/doron/myreceipts/receiver/SmsReceiver.kt`
+File: `app/src/main/java/com/neonsheep/myreceipts/receiver/SmsReceiver.kt`
 
 ```kotlin
-package com.doron.myreceipts.receiver
+package com.neonsheep.myreceipts.receiver
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import com.doron.myreceipts.data.AppDatabase
-import com.doron.myreceipts.data.CapturedReceiptEntity
-import com.doron.myreceipts.data.DomainMatchFilter
-import com.doron.myreceipts.data.MerchantConfig
-import com.doron.myreceipts.data.ReceiptDao
-import com.doron.myreceipts.data.generateClientId
+import com.neonsheep.myreceipts.data.AppDatabase
+import com.neonsheep.myreceipts.data.CapturedReceiptEntity
+import com.neonsheep.myreceipts.data.DomainMatchFilter
+import com.neonsheep.myreceipts.data.MerchantConfig
+import com.neonsheep.myreceipts.data.ReceiptDao
+import com.neonsheep.myreceipts.data.generateClientId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -1063,7 +1063,7 @@ Expected: BUILD SUCCESSFUL and all JVM tests pass.
 - [ ] **Step 6: Run integration tests on emulator**
 
 ```bash
-gradle connectedDebugAndroidTest --tests "com.doron.myreceipts.data.ReceiptCaptureIntegrationTest" 2>&1 | tail -15
+gradle connectedDebugAndroidTest --tests "com.neonsheep.myreceipts.data.ReceiptCaptureIntegrationTest" 2>&1 | tail -15
 ```
 
 If no emulator available, verify compilation:
@@ -1076,9 +1076,9 @@ Expected: 4 integration tests PASSED (or compilation success).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add app/src/main/java/com/doron/myreceipts/receiver/SmsReceiver.kt \
+git add app/src/main/java/com/neonsheep/myreceipts/receiver/SmsReceiver.kt \
   app/src/main/AndroidManifest.xml \
-  app/src/androidTest/java/com/doron/myreceipts/data/ReceiptCaptureIntegrationTest.kt
+  app/src/androidTest/java/com/neonsheep/myreceipts/data/ReceiptCaptureIntegrationTest.kt
 git commit -m "feat: add SmsReceiver with RECEIVE_SMS permission and capture handler"
 ```
 
@@ -1087,7 +1087,7 @@ git commit -m "feat: add SmsReceiver with RECEIVE_SMS permission and capture han
 ### Task 5: Wire Store to UI
 
 **Files:**
-- Modify: `app/src/main/java/com/doron/myreceipts/MainActivity.kt`
+- Modify: `app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt`
 
 **Interfaces:**
 - Consumes: `AppDatabase.getInstance(context)` and `ReceiptDao.getAll(): Flow<List<CapturedReceiptEntity>>` from Task 3. `CapturedReceipt` data class from `ui/screens/CapturedListScreen.kt` (existing).
@@ -1095,10 +1095,10 @@ git commit -m "feat: add SmsReceiver with RECEIVE_SMS permission and capture han
 
 - [ ] **Step 1: Update `MainActivity.kt`**
 
-Replace `app/src/main/java/com/doron/myreceipts/MainActivity.kt` with:
+Replace `app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt` with:
 
 ```kotlin
-package com.doron.myreceipts
+package com.neonsheep.myreceipts
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -1112,11 +1112,11 @@ import androidx.compose.runtime.getValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.doron.myreceipts.data.AppDatabase
-import com.doron.myreceipts.data.CapturedReceiptEntity
-import com.doron.myreceipts.ui.screens.CapturedListScreen
-import com.doron.myreceipts.ui.screens.CapturedReceipt
-import com.doron.myreceipts.ui.theme.MyReceiptsTheme
+import com.neonsheep.myreceipts.data.AppDatabase
+import com.neonsheep.myreceipts.data.CapturedReceiptEntity
+import com.neonsheep.myreceipts.ui.screens.CapturedListScreen
+import com.neonsheep.myreceipts.ui.screens.CapturedReceipt
+import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
 import kotlinx.coroutines.flow.map
 
 class MainActivity : ComponentActivity() {
@@ -1189,8 +1189,8 @@ gradle installDebug 2>&1 | tail -5
 
 Then grant SMS permission and send a test receipt:
 ```bash
-adb shell pm grant com.doron.myreceipts android.permission.RECEIVE_SMS
-adb shell am start -n com.doron.myreceipts/.MainActivity
+adb shell pm grant com.neonsheep.myreceipts android.permission.RECEIVE_SMS
+adb shell am start -n com.neonsheep.myreceipts/.MainActivity
 adb emu sms send "Shufersal" "קבלה דיגיטלית שלך מסופרסל: https://shufersal.co.il/receipt/abc123"
 ```
 
@@ -1202,6 +1202,6 @@ adb exec-out screencap -p > /tmp/myreceipts-capture.png
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/src/main/java/com/doron/myreceipts/MainActivity.kt
+git add app/src/main/java/com/neonsheep/myreceipts/MainActivity.kt
 git commit -m "feat: wire Room store to UI with live Flow observation and SMS permission request"
 ```
