@@ -1,7 +1,9 @@
 #!/bin/bash
 # Makes My Receipts' Play upload key, once, and keeps it in exactly two places: two secrets in GCP
 # Secret Manager (the key file and its password), and the owner's Strongbox database (an entry with
-# the password and the file attached, done by hand while this script waits). No copy stays on disk.
+# the password and the file attached, done by hand while this script waits). While it waits, the key
+# file is in ~/Downloads, so Strongbox's attach dialog finds it; it is deleted from there once you
+# press Enter (or if the script stops early). No copy stays on disk.
 #
 # The password is typed at a prompt and passed to keytool and gcloud through the environment and a
 # pipe, never as an argument, so it is in neither the shell history nor the process list.
@@ -21,13 +23,14 @@ for secret in "$KEY_SECRET" "$PASSWORD_SECRET"; do
     fi
 done
 
-work=$(mktemp -d)
-chmod 700 "$work"
+work="$HOME/Downloads"
 key="$work/my-receipts-upload.jks"
+if [ -e "$key" ]; then echo "$key already exists. Move it away first. Nothing was made." >&2; exit 1; fi
 cleanup() {
     rm -f "$key"
-    rmdir "$work" 2>/dev/null || true
 }
+# Readable by you only, from the moment it is written.
+umask 077
 trap cleanup EXIT
 
 read -r -s -p "Password for the new upload key (at least 12 characters): " UPLOAD_KEY_PASSWORD; echo
@@ -55,9 +58,8 @@ cat <<EOF
 Now the second copy, in Strongbox:
   1. Add an entry titled "My Receipts – Play upload key".
   2. Put the password you just typed in its Password field.
-  3. Attach this file to it: $key
-     (Finder: Go → Go to Folder…, paste the folder; or drag it from: open "$work")
+  3. Attach this file to it, from your Downloads folder: $key
   4. Save the database.
 EOF
-read -r -p "Press Enter once it is saved in Strongbox (the file is deleted then): " _
+read -r -p "Press Enter once it is saved in Strongbox (the file is then deleted from Downloads): " _
 echo "Done: the key is in Secret Manager and in Strongbox, and nowhere else."

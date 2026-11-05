@@ -43,7 +43,7 @@ Secret Manager (`my-receipts-upload-key` and `my-receipts-upload-key-password` i
 `symbio-shared`) and the owner's Strongbox.
 
 - **Make the key, once:** `scripts/make-upload-key.sh`, in a terminal (it asks for the password,
-  then waits while you save the key in Strongbox). It refuses to run if the secrets exist.
+  then waits while you save the key in Strongbox, attaching it from `~/Downloads`, where it sits until you press Enter). It refuses to run if the secrets exist.
 - **Build the bundle:** `scripts/bundle-release.sh` → `app/build/outputs/bundle/release/app-release.aab`.
   It fetches the key into a private temporary folder for the one build and deletes it. Raise
   `versionCode` in `app/build.gradle.kts` first: Play refuses a code it has seen.
