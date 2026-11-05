@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.neonsheep.myreceipts.auth.Backend
 import com.neonsheep.myreceipts.data.AppDatabase
+import com.neonsheep.myreceipts.data.ReceiptAmounts
 import com.neonsheep.myreceipts.data.PdfStatus
 import com.neonsheep.myreceipts.net.BackendException
 import java.io.File
@@ -39,8 +40,8 @@ class ReceiptDownloadWorker(
         // try again later (the link may still work for days); the phone prints the page only once
         // those retries are used up, or when signed out.
         val fromBackend = Backend.fetchReceiptPdf(applicationContext, url, clientId)
-        fromBackend.getOrNull()?.let { path ->
-            dao.updatePdfPath(clientId, path)
+        fromBackend.getOrNull()?.let { pdf ->
+            ReceiptAmounts.pdfSaved(dao, clientId, pdf.path, pdf.total)
             Log.d(TAG, "PDF saved from the backend for $clientId")
             return Result.success()
         }
@@ -63,7 +64,7 @@ class ReceiptDownloadWorker(
         val pdfPath = ReceiptPdfDownloader(applicationContext).download(url, clientId)
             ?.let { keepFirst(File(it), finalFile) }
         if (pdfPath != null) {
-            dao.updatePdfPath(clientId, pdfPath)
+            ReceiptAmounts.pdfSaved(dao, clientId, pdfPath, pageTotal = null)
             Log.d(TAG, "PDF saved by the phone for $clientId")
             return Result.success()
         }

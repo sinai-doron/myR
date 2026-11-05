@@ -44,15 +44,21 @@ class BackendApi(
     /**
      * Asks the backend to turn a receipt link into a PDF and writes it to [target].
      * The file is written to a temporary sibling first, so a failed download never leaves a
-     * half-written PDF behind.
+     * half-written PDF behind. Returns the amount paid, in shekels, when the backend read one from
+     * the receipt page (X-Receipt-Total), or null.
      */
-    suspend fun downloadReceiptPdf(accessToken: String, receiptUrl: String, target: File, background: Boolean = false) {
+    suspend fun downloadReceiptPdf(
+        accessToken: String,
+        receiptUrl: String,
+        target: File,
+        background: Boolean = false,
+    ): Double? {
         val body = json.encodeToString(ReceiptPdfRequest(receiptUrl)).toRequestBody(JSON)
         val request = request("/api/receipts/pdf", accessToken).post(body)
             // Catch-up of old receipts: the backend may hold these back to keep new receipts fast.
             .apply { if (background) header("X-Receipt-Priority", "background") }
             .build()
-        call(request, pdfClient()) { response ->
+        return call(request, pdfClient()) { response ->
             val type = response.header("Content-Type").orEmpty()
             if (!type.startsWith("application/pdf")) throw BackendException.Http(response.code)
             target.parentFile?.mkdirs()
@@ -66,6 +72,7 @@ class BackendApi(
             } finally {
                 partial.delete()
             }
+            Totals.parse(response.header("X-Receipt-Total"))
         }
     }
 
@@ -123,6 +130,14 @@ class BackendApi(
 
     @Serializable
     private data class ReceiptPdfRequest(val url: String)
+
+    object Totals {
+        private val PLAIN_AMOUNT = Regex("""\d{1,7}(\.\d{1,2})?""")
+
+        /** The X-Receipt-Total header's amount, or null when absent or not a plain positive amount. */
+        fun parse(value: String?): Double? =
+            value?.trim()?.takeIf { PLAIN_AMOUNT.matches(it) }?.toDouble()?.takeIf { it > 0 }
+    }
 
     @Serializable
     data class User(val id: String, val email: String, val displayName: String? = null)

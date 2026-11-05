@@ -16,12 +16,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,8 +40,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.neonsheep.myreceipts.R
+import com.neonsheep.myreceipts.data.TotalSource
 import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.SectionCard
@@ -53,6 +59,8 @@ fun ReceiptDetailScreen(
     onBack: () -> Unit,
     // Sends the link to the backend for a PDF; returns an error message, or null when it worked.
     onGetPdf: (suspend (CapturedReceipt) -> String?)? = null,
+    // Saves the amount the user typed, or none.
+    onSetAmount: (suspend (CapturedReceipt, Double?) -> Unit)? = null,
 ) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
@@ -60,6 +68,7 @@ fun ReceiptDetailScreen(
     val scope = rememberCoroutineScope()
     var fetching by remember(receipt.clientId) { mutableStateOf(false) }
     var fetchError by remember(receipt.clientId) { mutableStateOf<String?>(null) }
+    var editingAmount by remember(receipt.clientId) { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -97,8 +106,25 @@ fun ReceiptDetailScreen(
                             formatAmount(receipt.totalAmount),
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                             color = SuccessInk,
+                            modifier = Modifier
+                                .testTag("amount")
+                                .then(if (onSetAmount != null) Modifier.clickable { editingAmount = true } else Modifier),
                         )
                     }
+                }
+                if (onSetAmount != null) {
+                    TextButton(
+                        onClick = { editingAmount = true },
+                        modifier = Modifier.testTag("edit_amount"),
+                    ) {
+                        Text(
+                            if (receipt.totalAmount == null) "Add amount" else "Change amount",
+                            color = Purple,
+                        )
+                    }
+                }
+                amountNote(receipt)?.let { note ->
+                    Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.height(14.dp))
                 DownloadPill(receipt, hasPdf = hasPdf)
@@ -156,6 +182,16 @@ fun ReceiptDetailScreen(
                     }
                 }
             }
+            if (editingAmount && onSetAmount != null) {
+                AmountDialog(
+                    initial = receipt.totalAmount,
+                    onDismiss = { editingAmount = false },
+                    onSave = { amount ->
+                        editingAmount = false
+                        scope.launch { onSetAmount(receipt, amount) }
+                    },
+                )
+            }
             if (fetchError != null) {
                 Text(
                     fetchError!!,
@@ -166,6 +202,51 @@ fun ReceiptDetailScreen(
             }
         }
     }
+}
+
+/** Where the amount came from, when it was read rather than typed. */
+private fun amountNote(receipt: CapturedReceipt): String? = when {
+    receipt.totalAmount == null -> null
+    receipt.totalSource == TotalSource.PAGE -> "Read from the receipt"
+    receipt.totalSource == TotalSource.PDF -> "Read from the PDF"
+    else -> null
+}
+
+/** The amount as typed: digits with up to two decimals, "," or "."; null for an empty field. */
+internal fun parseTypedAmount(text: String): Result<Double?> {
+    val t = text.trim().replace(',', '.').removePrefix("₪").trim()
+    if (t.isEmpty()) return Result.success(null)
+    if (!Regex("""\d{1,7}(\.\d{0,2})?""").matches(t)) return Result.failure(IllegalArgumentException())
+    return Result.success(t.toDouble().takeIf { it > 0 })
+}
+
+@Composable
+private fun AmountDialog(initial: Double?, onDismiss: () -> Unit, onSave: (Double?) -> Unit) {
+    var text by remember { mutableStateOf(initial?.let { "%.2f".format(java.util.Locale.US, it) } ?: "") }
+    val parsed = parseTypedAmount(text)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Amount paid") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("₪") },
+                singleLine = true,
+                isError = parsed.isFailure,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.testTag("amount_field"),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(parsed.getOrNull()) },
+                enabled = parsed.isSuccess,
+                modifier = Modifier.testTag("amount_save"),
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

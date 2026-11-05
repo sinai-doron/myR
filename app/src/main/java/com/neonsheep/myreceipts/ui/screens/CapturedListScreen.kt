@@ -68,6 +68,7 @@ data class CapturedReceipt(
     val totalAmount: Double? = null,
     val pdfPath: String? = null,
     val pdfStatus: String? = null,
+    val totalSource: String? = null,
 )
 
 data class VendorSummary(

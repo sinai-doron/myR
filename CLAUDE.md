@@ -1,6 +1,6 @@
 # My Receipts (myR)
 
-Android app that keeps the receipts Israeli shops send as SMS links (proof for returns and warranties, before the link expires): it captures the receipt SMS, stores the link on the device and downloads each receipt as a PDF. It does not extract or collect data from messages or receipts. Owner: Doron Sinai. Being prepared for Google Play (personal developer account: closed test with 12+ testers for 14 days before production); sideloaded until then.
+Android app that keeps the receipts Israeli shops send as SMS links (proof for returns and warranties, before the link expires): it captures the receipt SMS, stores the link on the device and downloads each receipt as a PDF. From each receipt it keeps only the amount paid (read from the receipt page by doron-backend, or from the PDF's text on the phone, no AI; or typed by the user); it extracts nothing else from messages or receipts. Owner: Doron Sinai. Being prepared for Google Play (personal developer account: closed test with 12+ testers for 14 days before production); sideloaded until then.
 
 **Read `docs/HANDOVER.md` first.** It has current status, known problems, decisions and next steps. `README.md` has machine setup. The source of truth for intent is `docs/adr/ADR 001 Android SMS Receipt Capture.pdf`, then `docs/superpowers/specs/`.
 

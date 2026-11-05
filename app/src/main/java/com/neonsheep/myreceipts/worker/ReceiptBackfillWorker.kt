@@ -11,6 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.neonsheep.myreceipts.auth.Backend
 import com.neonsheep.myreceipts.data.AppDatabase
+import com.neonsheep.myreceipts.data.ReceiptAmounts
 import com.neonsheep.myreceipts.worker.BackfillPolicy.Next
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -55,7 +56,7 @@ class ReceiptBackfillWorker(context: Context, params: WorkerParameters) : Corout
             prefs.edit().putString(KEY_DAY, budget.day.toString()).putInt(KEY_USED, budget.used).apply()
 
             val error = result.exceptionOrNull()
-            result.getOrNull()?.let { path -> dao.updatePdfPath(receipt.clientId, path) }
+            result.getOrNull()?.let { pdf -> ReceiptAmounts.pdfSaved(dao, receipt.clientId, pdf.path, pdf.total) }
             BackfillPolicy.verdictFor(error)?.let { dao.updatePdfStatus(receipt.clientId, it) }
 
             when (val next = BackfillPolicy.nextAfter(error)) {

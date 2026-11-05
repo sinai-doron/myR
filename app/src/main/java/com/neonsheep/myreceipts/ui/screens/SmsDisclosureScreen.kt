@@ -96,8 +96,8 @@ fun SmsDisclosureScreen(onContinue: () -> Unit, onNotNow: () -> Unit) {
                     Point(
                         "🧾",
                         "What it keeps",
-                        "Only the receipt link, the shop's name and the time. The message itself is never " +
-                            "saved.",
+                        "Only the receipt link, the shop's name and the time, and from the receipt itself its " +
+                            "PDF and the amount paid. The message itself is never saved.",
                     )
                     Point(
                         "🔒",
@@ -108,8 +108,8 @@ fun SmsDisclosureScreen(onContinue: () -> Unit, onNotNow: () -> Unit) {
                     Point(
                         "☁️",
                         "What it sends",
-                        "The receipt link, to our server, to fetch the receipt as a PDF. Nothing else from " +
-                            "your messages.",
+                        "The receipt link, to our server, to fetch the receipt as a PDF and read the amount " +
+                            "paid from it. Nothing else from your messages.",
                     )
                     Point(
                         "✉️",
