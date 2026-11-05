@@ -44,13 +44,18 @@ android {
     signingConfigs {
         // The Play upload key. Play App Signing holds the key users' installs are signed with;
         // this one only proves uploads come from us, and Google can reset it if it is lost.
-        // It lives outside this public repo: release.* in local.properties points at it.
-        localProps.getProperty("release.storeFile")?.let { path ->
+        // It lives outside this public repo, in GCP Secret Manager and the owner's Strongbox:
+        // scripts/bundle-release.sh passes it as RELEASE_* environment variables for one build;
+        // release.* in local.properties works too.
+        val release = { key: String ->
+            localProps.getProperty("release.$key") ?: System.getenv("RELEASE_${key.uppercase()}")
+        }
+        release("storeFile")?.let { path ->
             create("release") {
                 storeFile = file(path)
-                storePassword = localProps.getProperty("release.storePassword")
-                keyAlias = localProps.getProperty("release.keyAlias")
-                keyPassword = localProps.getProperty("release.keyPassword")
+                storePassword = release("storePassword")
+                keyAlias = release("keyAlias") ?: "upload"
+                keyPassword = release("keyPassword") ?: release("storePassword")
             }
         }
         getByName("debug") {
