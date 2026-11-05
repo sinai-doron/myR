@@ -49,6 +49,43 @@ object TotalSource {
     const val NONE = "none"
 }
 
+/** The category a store's receipts count in, as the user set it. Stores not here use [Category.guessFor]. */
+@Entity(tableName = "store_categories")
+data class StoreCategoryEntity(
+    @PrimaryKey val senderLabel: String,
+    /** A [Category] name. */
+    val category: String,
+)
+
+/** A monthly budget, in shekels: for one [Category] (by name), or for everything ([ALL]). */
+@Entity(tableName = "budgets")
+data class BudgetEntity(
+    @PrimaryKey val category: String,
+    val monthlyLimit: Double,
+) {
+    companion object {
+        const val ALL = "ALL"
+    }
+}
+
+@Dao
+interface SpendingDao {
+    @Query("SELECT * FROM store_categories")
+    fun storeCategories(): Flow<List<StoreCategoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun setStoreCategory(entity: StoreCategoryEntity)
+
+    @Query("SELECT * FROM budgets")
+    fun budgets(): Flow<List<BudgetEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun setBudget(entity: BudgetEntity)
+
+    @Query("DELETE FROM budgets WHERE category = :category")
+    suspend fun removeBudget(category: String)
+}
+
 /** What the backend said about a receipt it couldn't turn into a PDF. */
 object PdfStatus {
     /** The link's site isn't one the backend serves yet (HTTP 400). */
@@ -111,9 +148,15 @@ interface ReceiptDao {
     suspend fun withoutTotalLookedFor(): List<CapturedReceiptEntity>
 }
 
-@Database(entities = [CapturedReceiptEntity::class], version = 5, exportSchema = false)
+@Database(
+    entities = [CapturedReceiptEntity::class, StoreCategoryEntity::class, BudgetEntity::class],
+    version = 6,
+    exportSchema = false,
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun receiptDao(): ReceiptDao
+
+    abstract fun spendingDao(): SpendingDao
 
     companion object {
         @Volatile
@@ -126,7 +169,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "receipts.db",
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
@@ -146,5 +189,19 @@ val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
 val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
     override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE captured_receipts ADD COLUMN totalSource TEXT")
+    }
+}
+
+/** v6 adds each store's category and the monthly budgets. */
+val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `store_categories` (`senderLabel` TEXT NOT NULL, `category` TEXT NOT NULL, " +
+                "PRIMARY KEY(`senderLabel`))",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `budgets` (`category` TEXT NOT NULL, `monthlyLimit` REAL NOT NULL, " +
+                "PRIMARY KEY(`category`))",
+        )
     }
 }

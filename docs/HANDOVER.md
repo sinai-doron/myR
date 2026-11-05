@@ -102,7 +102,7 @@ The ADR and spec were not updated for these. If the ADR matters, amend it.
 3. Fix Shufersal: try intercepting the click's network calls (`shouldInterceptRequest` already logs them), or evaluate a fetch of the download endpoint, or accept the `printToPdf` fallback if the SPA redirect can be made reliable.
 4. (Done 2026-10-31) Instrumented tests fixed and passing on a Pixel 10 API 37 emulator: `gradle :app:connectedDebugAndroidTest`.
 5. Move the 30-day constant to one place.
-6. (Done 2026-11-05, no AI) Amounts: doron-backend reads the amount paid from the receipt page and sends `X-Receipt-Total` with the PDF; without it the phone reads the PDF's text (Android 15+, `PdfText`/`ReceiptTotals`); else the user types it. `totalSource` says which (page, pdf, user, none); a typed amount is never replaced. Next: monthly spending and budget.
+6. (Done 2026-11-05, no AI) Amounts: doron-backend reads the amount paid from the receipt page and sends `X-Receipt-Total` with the PDF; without it the phone reads the PDF's text (Android 15+, `PdfText`/`ReceiptTotals`); else the user types it. `totalSource` says which (page, pdf, user, none); a typed amount is never replaced. (Done) Monthly spending and budget: `SpendingScreen` from the home "This month" card; categories per store (guessed from the sender name, `Category.guessFor`, changed by tapping a store); a monthly budget overall and per category, amber from 80%, red over. Next: a notification near the limit (needs POST_NOTIFICATIONS).
 7. Migrate backend to `@google/genai`, add a couple of tests.
 8. Update the ADR/spec to match section 4.
 

@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -42,7 +43,7 @@ class MigrationTest {
         }
 
         val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build() // no destructive fallback: a failing migration must fail this test
         try {
             val all = room.receiptDao().getAllOnce()
@@ -83,7 +84,7 @@ class MigrationTest {
         }
 
         val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build() // no destructive fallback: a failing migration must fail this test
         try {
             val dao = room.receiptDao()
@@ -107,6 +108,45 @@ class MigrationTest {
             dao.setPdfTotal("c-1", 12.0, TotalSource.PDF)
             assertEquals(700.0, dao.getByClientId("c-1")!!.totalAmount!!, 0.001)
             assertEquals(TotalSource.USER, dao.getByClientId("c-1")!!.totalSource)
+        } finally {
+            room.close()
+        }
+    }
+
+    @Test
+    fun v5ToV6_keepsReceipts_andAddsCategoriesAndBudgets() = runBlocking {
+        context.deleteDatabase(name)
+        SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name), null).use { db ->
+            db.execSQL(
+                "CREATE TABLE `captured_receipts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`link` TEXT NOT NULL, `senderLabel` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, " +
+                    "`clientId` TEXT NOT NULL, `capturedAt` INTEGER NOT NULL, `totalAmount` REAL, `pdfPath` TEXT, " +
+                    "`pdfStatus` TEXT, `totalSource` TEXT)",
+            )
+            db.execSQL("CREATE UNIQUE INDEX `index_captured_receipts_clientId` ON `captured_receipts` (`clientId`)")
+            db.execSQL(
+                "INSERT INTO captured_receipts (link, senderLabel, timestamp, clientId, capturedAt, totalAmount, totalSource) " +
+                    "VALUES ('https://wee.ai/r/a', 'IKEA', 1, 'c-1', 2, 730.0, 'page')",
+            )
+            db.version = 5
+        }
+
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .build() // no destructive fallback: a failing migration must fail this test
+        try {
+            val r = room.receiptDao().getAllOnce().single()
+            assertEquals(730.0, r.totalAmount!!, 0.001)
+            assertEquals(TotalSource.PAGE, r.totalSource)
+
+            val spending = room.spendingDao()
+            spending.setStoreCategory(StoreCategoryEntity("IKEA", Category.LEISURE.name))
+            spending.setStoreCategory(StoreCategoryEntity("IKEA", Category.HOME.name))
+            spending.setBudget(BudgetEntity(BudgetEntity.ALL, 3000.0))
+            spending.setBudget(BudgetEntity(Category.HOME.name, 500.0))
+            spending.removeBudget(Category.HOME.name)
+            assertEquals(listOf(StoreCategoryEntity("IKEA", "HOME")), spending.storeCategories().first())
+            assertEquals(listOf(BudgetEntity(BudgetEntity.ALL, 3000.0)), spending.budgets().first())
         } finally {
             room.close()
         }
