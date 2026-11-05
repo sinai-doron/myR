@@ -38,6 +38,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.neonsheep.myreceipts.data.AppDatabase
 import com.neonsheep.myreceipts.data.BudgetEntity
 import com.neonsheep.myreceipts.data.Category
+import com.neonsheep.myreceipts.data.SampleReceipts
 import com.neonsheep.myreceipts.data.Spend
 import com.neonsheep.myreceipts.data.Spending
 import com.neonsheep.myreceipts.data.StoreCategoryEntity
@@ -224,6 +225,8 @@ class MainActivity : ComponentActivity() {
                             onTurnOnCapture = { disclosureOpen.value = true },
                             monthBudget = budgets[BudgetEntity.ALL],
                             onOpenSpending = { spendingMonth = YearMonth.now() },
+                            onAddSamples = { scope.launch { dao.insertAll(SampleReceipts.build()) } },
+                            onRemoveSamples = { scope.launch { dao.deleteSamples() } },
                             onSignOut = {
                                 scope.launch {
                                     auth.signOut()
