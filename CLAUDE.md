@@ -27,6 +27,8 @@ npm ci && npm run build && npm run start:prod   # needs .env, see backend/README
 
 ## Rules that matter
 
+- **Every visible string lives in `res/values/strings.xml` (English) and `res/values-iw/strings.xml` (Hebrew).** The app follows the phone's language (or Android's per-app language setting, `res/xml/locales_config.xml`). A new string goes in both files; the SMS disclosure's Hebrew must say exactly what the English says.
+
 - **Never store the raw SMS body.** Only extracted links, sender label, timestamp, client id.
 - The filter is the privacy gate: OTPs, bank alerts and personal SMS must never be stored. `ReceiptFilter` is an interface (domain allowlist + heuristic, composed).
 - Sender label is a routing hint, not a trust signal. Alphanumeric sender IDs are spoofable.

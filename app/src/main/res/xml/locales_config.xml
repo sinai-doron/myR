@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The languages Android's per-app language setting offers. Without a choice there, the app
+     follows the phone's language: Hebrew on a Hebrew phone, English otherwise. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="iw" />
+</locale-config>

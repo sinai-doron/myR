@@ -1,0 +1,127 @@
+<resources>
+    <string name="app_name">My Receipts</string>
+    <string name="empty_title">עדיין לא נשמרו קבלות</string>
+    <string name="empty_subtitle">קבלות שמגיעות ב-SMS יופיעו כאן אוטומטית</string>
+    <string name="open_in_browser">פתיחה בדפדפן</string>
+    <string name="label_link">קישור</string>
+    <string name="label_received">התקבלה</string>
+    <string name="label_id">מזהה</string>
+    <string name="back">חזרה</string>
+
+    <string name="save">שמירה</string>
+    <string name="cancel">ביטול</string>
+    <string name="close">סגירה</string>
+    <string name="remove">הסרה</string>
+    <string name="delete">מחיקה</string>
+    <string name="details">פרטים</string>
+
+    <string name="sms_title">כל הקבלות נשמרות אוטומטית</string>
+    <string name="sms_intro">חנויות שולחות קבלות כקישורים בהודעות SMS, והקישורים מפסיקים לעבוד אחרי זמן מה. כדי לשמור אותן להחזרות ולאחריות, My Receipts צריכה לקרוא את הודעות ה-SMS שלך.</string>
+    <string name="sms_reads_title">מה היא קוראת</string>
+    <string name="sms_reads_body">הודעות חדשות כשהן מגיעות, ופעם אחת גם את ההודעות שכבר בטלפון, כדי למצוא קישורים לקבלות מחנויות.</string>
+    <string name="sms_keeps_title">מה היא שומרת</string>
+    <string name="sms_keeps_body">רק את הקישור לקבלה, את שם החנות ואת השעה, ומהקבלה עצמה את קובץ ה-PDF ואת הסכום ששולם. ההודעה עצמה לעולם לא נשמרת.</string>
+    <string name="sms_ignores_title">מה היא מדלגת עליו</string>
+    <string name="sms_ignores_body">כל הודעה אחרת: קודים, הודעות מהבנק, הודעות אישיות. מדלגים עליהן בטלפון והן לא נשלחות לשום מקום.</string>
+    <string name="sms_sends_title">מה היא שולחת</string>
+    <string name="sms_sends_body">את הקישור לקבלה, לשרת שלנו, כדי להביא את הקבלה כ-PDF ולקרוא ממנה את הסכום ששולם. שום דבר אחר מההודעות שלך.</string>
+    <string name="sms_never_sends_title">היא לעולם לא שולחת הודעות</string>
+    <string name="sms_never_sends_body">בבקשה הבאה של Android כתוב \"לשלוח ולהציג\", כי כך Android מקבצת את ההרשאה הזו. My Receipts רק קוראת.</string>
+    <string name="sms_continue">המשך</string>
+    <string name="sms_not_now">לא עכשיו</string>
+    <string name="capture_off_title">השמירה האוטומטית כבויה</string>
+    <string name="capture_off_body">קבלות חדשות שיגיעו ב-SMS לא יישמרו.</string>
+    <string name="capture_turn_on">הפעלה</string>
+
+    <string name="sign_in_subtitle">צריך להתחבר כדי להפוך את הקבלות מה-SMS לקובצי PDF</string>
+    <string name="sign_in_google">התחברות עם Google</string>
+    <string name="signed_in">מחובר/ת</string>
+    <string name="sign_out">התנתקות</string>
+    <string name="error_not_allowed">לחשבון Google הזה אין גישה ל-My Receipts.</string>
+    <string name="error_network">אין חיבור לשרת. כדאי לבדוק את החיבור ולנסות שוב.</string>
+    <string name="error_sign_in_rate_limited">יותר מדי ניסיונות. אפשר לנסות שוב בעוד דקה.</string>
+    <string name="error_sign_in_failed">ההתחברות נכשלה (%1$s). כדאי לנסות שוב.</string>
+    <string name="error_no_google_account">אין חשבון Google בטלפון הזה</string>
+    <string name="error_google_sign_in">ההתחברות עם Google נכשלה</string>
+    <string name="error_unexpected_credential">התקבל מ-Google פרט התחברות לא צפוי</string>
+
+    <string name="home_subtitle_empty">הקבלות מה-SMS שלך, במקום אחד</string>
+    <string name="home_subtitle">%1$s · %2$s</string>
+    <string name="stores_title">🧾 חנויות</string>
+    <string name="this_month">📅 החודש</string>
+    <string name="stat_receipts">קבלות</string>
+    <string name="stat_stores">חנויות</string>
+    <string name="stat_spent">הוצאות</string>
+    <string name="see_spending">להוצאות ולהגדרת תקציב ›</string>
+    <string name="samples_banner_title">מוצגות קבלות לדוגמה</string>
+    <string name="samples_banner_body">קבלות מומצאות כדי לנסות את האפליקציה. הקבלות האמיתיות שלך יופיעו לידן.</string>
+    <string name="try_samples">לנסות עם קבלות לדוגמה</string>
+    <string name="vendor_row">%1$s · %2$s</string>
+    <plurals name="receipt_count">
+        <item quantity="one">קבלה אחת</item>
+        <item quantity="two">שתי קבלות</item>
+        <item quantity="other">%d קבלות</item>
+    </plurals>
+    <plurals name="store_count">
+        <item quantity="one">חנות אחת</item>
+        <item quantity="two">שתי חנויות</item>
+        <item quantity="other">%d חנויות</item>
+    </plurals>
+
+    <string name="swipe_to_delete">אפשר להחליק קבלה כדי למחוק אותה</string>
+    <string name="pill_sample">דוגמה</string>
+    <string name="pill_pdf_saved">ה-PDF נשמר</string>
+    <string name="pill_unsupported">החנות עוד לא נתמכת</string>
+    <string name="pill_gone">כבר לא זמינה</string>
+    <string name="pill_failed">לא הצלחנו להביא PDF</string>
+    <string name="pill_link_only">קישור בלבד</string>
+    <string name="pill_downloading">בהורדה</string>
+
+    <string name="receipt_title">קבלה</string>
+    <string name="add_amount">הוספת סכום</string>
+    <string name="change_amount">שינוי הסכום</string>
+    <string name="amount_from_page">נקרא מהקבלה</string>
+    <string name="amount_from_pdf">נקרא מה-PDF</string>
+    <string name="amount_paid">הסכום ששולם</string>
+    <string name="sample_note">קבלה לדוגמה, מומצאת כדי לנסות את האפליקציה. זו לא קנייה אמיתית ואין לה PDF.</string>
+    <string name="open_pdf">פתיחת ה-PDF</string>
+    <string name="get_pdf">הבאת PDF</string>
+    <string name="get_pdf_again">הבאת ה-PDF מחדש</string>
+    <string name="error_signed_out">ההתחברות פגה. צריך להתחבר שוב.</string>
+    <string name="error_rate_limited_seconds">יותר מדי בקשות. אפשר לנסות שוב בעוד %1$d שניות.</string>
+    <string name="error_gone">לחנות כבר אין את הקבלה הזו. הקישורים פגים אחרי זמן מה.</string>
+    <string name="error_unsupported">החנות הזו עוד לא נתמכת. נקבל הודעה ונוסיף אותה.</string>
+    <string name="error_server_pdf">השרת לא הצליח להכין PDF של הקבלה הזו.</string>
+    <string name="error_pdf">לא הצלחנו להביא את ה-PDF.</string>
+
+    <string name="spending_title">הוצאות</string>
+    <string name="spent">הוצאות</string>
+    <string name="set_monthly_budget">הגדרת תקציב חודשי</string>
+    <plurals name="without_amount">
+        <item quantity="one">קבלה אחת החודש בלי סכום, והיא לא נספרת. אפשר לפתוח קבלה ולהוסיף לה סכום.</item>
+        <item quantity="two">שתי קבלות החודש בלי סכום, והן לא נספרות. אפשר לפתוח קבלה ולהוסיף לה סכום.</item>
+        <item quantity="other">%d קבלות החודש בלי סכום, והן לא נספרות. אפשר לפתוח קבלה ולהוסיף לה סכום.</item>
+    </plurals>
+    <string name="by_category">📊 לפי קטגוריה</string>
+    <string name="nothing_this_month">עדיין אין החודש קבלות עם סכום.</string>
+    <string name="by_store">🧾 לפי חנות</string>
+    <string name="store_row">%1$s %2$s · %3$s</string>
+    <string name="monthly_budget">תקציב חודשי</string>
+    <string name="category_budget">תקציב %1$s</string>
+    <string name="store_counts_as">%1$s נספרת בתור</string>
+    <string name="previous_month">החודש הקודם</string>
+    <string name="next_month">החודש הבא</string>
+    <string name="budget_over">%1$s מעל התקציב של %2$s</string>
+    <string name="budget_left">נשארו %1$s מתוך %2$s</string>
+    <string name="budget_field">₪ לחודש</string>
+    <string name="budget_empty_hint">אפשר להשאיר ריק כדי לבטל את התקציב.</string>
+
+    <string name="category_groceries">מכולת וסופר</string>
+    <string name="category_eating_out">אוכל בחוץ</string>
+    <string name="category_home">בית</string>
+    <string name="category_health">בריאות ויופי</string>
+    <string name="category_transport">דלק ותחבורה</string>
+    <string name="category_clothing">ביגוד וספורט</string>
+    <string name="category_leisure">פנאי</string>
+    <string name="category_other">אחר</string>
+</resources>

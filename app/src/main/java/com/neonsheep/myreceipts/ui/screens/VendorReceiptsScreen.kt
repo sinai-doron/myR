@@ -1,5 +1,7 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import com.neonsheep.myreceipts.R
+import androidx.compose.ui.res.stringResource
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
@@ -92,7 +94,7 @@ fun VendorReceiptsScreen(
                 }
             }
             Text(
-                "Swipe a receipt to delete it",
+                stringResource(R.string.swipe_to_delete),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -121,7 +123,7 @@ private fun SwipeToDelete(onDelete: () -> Unit, content: @Composable () -> Unit)
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 Text(
-                    "Delete",
+                    stringResource(R.string.delete),
                     modifier = Modifier.padding(horizontal = 24.dp),
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = Color.White,
@@ -162,7 +164,7 @@ private fun ReceiptRow(receipt: CapturedReceipt, onInfoClick: () -> Unit) {
         IconButton(onClick = onInfoClick) {
             Icon(
                 Icons.Outlined.Info,
-                contentDescription = "Details",
+                contentDescription = stringResource(R.string.details),
                 tint = Purple.copy(alpha = 0.6f),
                 modifier = Modifier.size(24.dp),
             )
@@ -175,13 +177,13 @@ private fun ReceiptRow(receipt: CapturedReceipt, onInfoClick: () -> Unit) {
 internal fun DownloadPill(receipt: CapturedReceipt, hasPdf: Boolean = receipt.hasPdf()) {
     // hasPdf is a parameter so the pill redraws when the file appears, even if the receipt doesn't change
     when {
-        receipt.isSample() -> Pill("Sample", PillTone.Grey)
-        hasPdf -> Pill("PDF saved", PillTone.Green)
-        receipt.pdfStatus == PdfStatus.UNSUPPORTED -> Pill("Store not supported yet", PillTone.Grey)
-        receipt.pdfStatus == PdfStatus.GONE -> Pill("No longer available", PillTone.Grey)
-        receipt.pdfStatus == PdfStatus.FAILED -> Pill("Couldn't get PDF", PillTone.Grey)
-        receipt.isPastDownloadWindow() -> Pill("Link only", PillTone.Grey)
-        else -> Pill("Downloading", PillTone.Purple, loading = true)
+        receipt.isSample() -> Pill(stringResource(R.string.pill_sample), PillTone.Grey)
+        hasPdf -> Pill(stringResource(R.string.pill_pdf_saved), PillTone.Green)
+        receipt.pdfStatus == PdfStatus.UNSUPPORTED -> Pill(stringResource(R.string.pill_unsupported), PillTone.Grey)
+        receipt.pdfStatus == PdfStatus.GONE -> Pill(stringResource(R.string.pill_gone), PillTone.Grey)
+        receipt.pdfStatus == PdfStatus.FAILED -> Pill(stringResource(R.string.pill_failed), PillTone.Grey)
+        receipt.isPastDownloadWindow() -> Pill(stringResource(R.string.pill_link_only), PillTone.Grey)
+        else -> Pill(stringResource(R.string.pill_downloading), PillTone.Purple, loading = true)
     }
 }
 

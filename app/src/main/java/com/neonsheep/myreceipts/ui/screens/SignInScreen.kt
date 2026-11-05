@@ -73,7 +73,7 @@ fun SignInScreen(signingIn: Boolean, error: String?, onSignIn: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "Sign in to turn your receipt texts into PDFs",
+                    stringResource(R.string.sign_in_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -97,7 +97,7 @@ fun SignInScreen(signingIn: Boolean, error: String?, onSignIn: () -> Unit) {
                         )
                     } else {
                         Text(
-                            "Sign in with Google",
+                            stringResource(R.string.sign_in_google),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }

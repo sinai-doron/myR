@@ -126,18 +126,21 @@ class MainActivity : ComponentActivity() {
             if (auth.currentUser() != null) ReceiptBackfillWorker.start(this@MainActivity)
         }
 
+        // Made once, outside composition, so a redraw never starts new database queries.
+        val storeCategoriesFlow = spendingDao.storeCategories()
+            .map { list -> list.associate { it.senderLabel to it.category } }
+        val budgetsFlow = spendingDao.budgets()
+            .map { list -> list.associate { it.category to it.monthlyLimit } }
+        val userFlow = auth.user.map<SignedInUser?, Any?> { it }
+
         setContent {
             val receipts by receiptsFlow.collectAsState(initial = emptyList())
-            val storeCategories by spendingDao.storeCategories()
-                .map { list -> list.associate { it.senderLabel to it.category } }
-                .collectAsState(initial = emptyMap())
-            val budgets by spendingDao.budgets()
-                .map { list -> list.associate { it.category to it.monthlyLimit } }
-                .collectAsState(initial = emptyMap())
+            val storeCategories by storeCategoriesFlow.collectAsState(initial = emptyMap())
+            val budgets by budgetsFlow.collectAsState(initial = emptyMap())
             // The month the spending screen shows; null while it is closed.
             var spendingMonth by remember { mutableStateOf<YearMonth?>(null) }
             // NOT_LOADED until the encrypted session has been read, so the sign-in screen doesn't flash
-            val user by auth.user.map<SignedInUser?, Any?> { it }.collectAsState(initial = NOT_LOADED)
+            val user by userFlow.collectAsState(initial = NOT_LOADED)
             var signingIn by remember { mutableStateOf(false) }
             var signInError by remember { mutableStateOf<String?>(null) }
             var selectedVendor by remember { mutableStateOf<String?>(null) }
@@ -252,10 +255,10 @@ class MainActivity : ComponentActivity() {
         e.message
     } catch (e: BackendException) {
         when (e) {
-            BackendException.NotAllowed -> "This Google account isn't allowed to use My Receipts."
-            is BackendException.Network -> "Can't reach the server. Check your connection and try again."
-            is BackendException.RateLimited -> "Too many attempts. Try again in a minute."
-            else -> "Sign-in failed (${e.message}). Try again."
+            BackendException.NotAllowed -> getString(R.string.error_not_allowed)
+            is BackendException.Network -> getString(R.string.error_network)
+            is BackendException.RateLimited -> getString(R.string.error_sign_in_rate_limited)
+            else -> getString(R.string.error_sign_in_failed, e.message)
         }
     }
 
@@ -272,14 +275,14 @@ class MainActivity : ComponentActivity() {
             dao.updatePdfStatus(receipt.clientId, if (e.code == 410) PdfStatus.GONE else PdfStatus.UNSUPPORTED)
         }
         return when (e) {
-            BackendException.Unauthorized -> "You've been signed out. Sign in again."
-            is BackendException.Network -> "Can't reach the server. Check your connection and try again."
-            is BackendException.RateLimited -> "Too many requests. Try again in ${e.retryAfterSeconds} seconds."
+            BackendException.Unauthorized -> getString(R.string.error_signed_out)
+            is BackendException.Network -> getString(R.string.error_network)
+            is BackendException.RateLimited -> getString(R.string.error_rate_limited_seconds, e.retryAfterSeconds.toInt())
             is BackendException.Http ->
-                if (e.code == 410) "The store no longer has this receipt. Links expire after a while."
-                else if (e.code == 400) "This store isn't supported yet. You'll get an e-mail to add it."
-                else "The server couldn't make a PDF of this receipt."
-            else -> "Couldn't get the PDF."
+                if (e.code == 410) getString(R.string.error_gone)
+                else if (e.code == 400) getString(R.string.error_unsupported)
+                else getString(R.string.error_server_pdf)
+            else -> getString(R.string.error_pdf)
         }
     }
 
