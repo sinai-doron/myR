@@ -79,7 +79,7 @@ The ADR and spec were not updated for these. If the ADR matters, amend it.
 
 ## 6. Decisions the owner made (do not relitigate)
 
-- Android only, sideloaded; no Play Store.
+- Android only. Going to Google Play (decided 2026-11-05): the SMS permission is declared under "SMS-based money management", so the budget comes first.
 - No GCP deployment for now. Run the backend locally only.
 - PDF strategy: 1) find the vendor's download button, 2) if found use that file, 3) if not, render our own PDF. Either way the PDF must be available inside the app. Later, feed the PDF to Gemini.
 - Open the file by default; browser only as fallback. Show a download indicator beside the "i" icon and download status in the details screen.
@@ -102,7 +102,7 @@ The ADR and spec were not updated for these. If the ADR matters, amend it.
 3. Fix Shufersal: try intercepting the click's network calls (`shouldInterceptRequest` already logs them), or evaluate a fetch of the download endpoint, or accept the `printToPdf` fallback if the SPA redirect can be made reliable.
 4. (Done 2026-10-31) Instrumented tests fixed and passing on a Pixel 10 API 37 emulator: `gradle :app:connectedDebugAndroidTest`.
 5. Move the 30-day constant to one place.
-6. Wire app to backend (or decide to call Gemini directly): upload the PDF, store the extracted result in Room, show amount on cards.
+6. (Done 2026-11-05, no AI) Amounts: doron-backend reads the amount paid from the receipt page and sends `X-Receipt-Total` with the PDF; without it the phone reads the PDF's text (Android 15+, `PdfText`/`ReceiptTotals`); else the user types it. `totalSource` says which (page, pdf, user, none); a typed amount is never replaced. Next: monthly spending and budget.
 7. Migrate backend to `@google/genai`, add a couple of tests.
 8. Update the ADR/spec to match section 4.
 

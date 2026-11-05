@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.neonsheep.myreceipts.data.AppDatabase
+import com.neonsheep.myreceipts.data.ReceiptAmounts
 import com.neonsheep.myreceipts.data.CapturedReceiptEntity
 import com.neonsheep.myreceipts.data.PdfStatus
 import com.neonsheep.myreceipts.data.ReceiptLinks
@@ -110,6 +111,8 @@ class MainActivity : ComponentActivity() {
                     val file = Backend.pdfFile(this@MainActivity, r.clientId)
                     if (file.exists()) dao.updatePdfPath(r.clientId, file.absolutePath)
                 }
+            // Receipts saved before amounts were kept: read their PDFs once.
+            ReceiptAmounts.catchUp(dao)
             // Old receipts without a PDF: caught up slowly in the background, signed in only.
             if (auth.currentUser() != null) ReceiptBackfillWorker.start(this@MainActivity)
         }
@@ -157,6 +160,7 @@ class MainActivity : ComponentActivity() {
                             receipt = selectedReceipt,
                             onBack = { selectedReceiptId = null },
                             onGetPdf = { receipt -> getPdf(receipt) },
+                            onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
                         )
                     }
                     selectedVendor != null -> {
@@ -214,8 +218,8 @@ class MainActivity : ComponentActivity() {
     private suspend fun getPdf(receipt: CapturedReceipt): String? {
         val result = Backend.fetchReceiptPdf(this, receipt.link, receipt.clientId)
         val dao = AppDatabase.getInstance(this).receiptDao()
-        result.getOrNull()?.let { path ->
-            dao.updatePdfPath(receipt.clientId, path)
+        result.getOrNull()?.let { pdf ->
+            ReceiptAmounts.pdfSaved(dao, receipt.clientId, pdf.path, pdf.total)
             return null
         }
         val e = result.exceptionOrNull()
@@ -288,4 +292,5 @@ fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     totalAmount = totalAmount,
     pdfPath = pdfPath,
     pdfStatus = pdfStatus,
+    totalSource = totalSource,
 )

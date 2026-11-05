@@ -24,24 +24,27 @@ object Backend {
     fun pdfFile(context: Context, clientId: String): File =
         File(File(context.filesDir, "receipts"), "$clientId.pdf")
 
+    /** A PDF the backend made: where it was saved, and the amount paid if it read one. */
+    data class FetchedPdf(val path: String, val total: Double?)
+
     /**
      * Sends a receipt link to the backend and saves the PDF it returns.
-     * Returns the file's path, or null when signed out or the backend couldn't make one.
-     * Never logs the link: it can identify the shopper.
+     * Fails when signed out or the backend couldn't make one.
+     * Never logs the link or the amount: they can identify the shopper.
      */
     suspend fun fetchReceiptPdf(
         context: Context,
         url: String,
         clientId: String,
         background: Boolean = false,
-    ): Result<String> {
+    ): Result<FetchedPdf> {
         val auth = auth(context)
         if (auth.currentUser() == null) return Result.failure(BackendException.Unauthorized)
         val target = pdfFile(context, clientId)
         return try {
-            auth.withAccessToken { token -> api.downloadReceiptPdf(token, url, target, background) }
-            Log.d(TAG, "Backend PDF saved for $clientId (${target.length()} bytes)")
-            Result.success(target.absolutePath)
+            val total = auth.withAccessToken { token -> api.downloadReceiptPdf(token, url, target, background) }
+            Log.d(TAG, "Backend PDF saved for $clientId (${target.length()} bytes, amount: ${total != null})")
+            Result.success(FetchedPdf(target.absolutePath, total))
         } catch (e: BackendException) {
             Log.w(TAG, "Backend PDF failed for $clientId: ${e.message}")
             Result.failure(e)
