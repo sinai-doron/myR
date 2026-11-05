@@ -37,20 +37,21 @@ Android SDK from Android Studio lives at `~/Library/Android/sdk` on macOS.
 
 ### Release builds (Play)
 
-`./gradlew bundleRelease` makes the AAB to upload to Play; it is shrunk with R8 and always
-talks to `https://apps.neonsheep.dev`. It is signed with the Play **upload key**, which lives
-outside this repo. Point at it in `local.properties`:
+The release build is shrunk with R8, always talks to `https://apps.neonsheep.dev`, and is signed
+with the Play **upload key**, which never goes in this repo. It lives in two places only: GCP
+Secret Manager (`my-receipts-upload-key` and `my-receipts-upload-key-password` in
+`symbio-shared`) and the owner's Strongbox.
 
-```
-release.storeFile=/path/to/myr-upload.jks
-release.storePassword=…
-release.keyAlias=myr-upload
-release.keyPassword=…
-```
+- **Make the key, once:** `scripts/make-upload-key.sh`, in a terminal (it asks for the password,
+  then waits while you save the key in Strongbox). It refuses to run if the secrets exist.
+- **Build the bundle:** `scripts/bundle-release.sh` → `app/build/outputs/bundle/release/app-release.aab`.
+  It fetches the key into a private temporary folder for the one build and deletes it. Raise
+  `versionCode` in `app/build.gradle.kts` first: Play refuses a code it has seen.
 
-Without those lines the release build is left unsigned rather than signed with a debug key.
-Play App Signing holds the key installs are actually signed with; a lost upload key can be
-reset through Play Console, but keep the file and password backed up together.
+`release.storeFile`, `release.storePassword` (and optionally `release.keyAlias`,
+`release.keyPassword`) in `local.properties` also work. Without a key the release build is left
+unsigned rather than signed with a debug key. Play App Signing holds the key installs are actually
+signed with; a lost upload key can be reset through Play Console.
 
 ## Devices used
 
