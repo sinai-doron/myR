@@ -18,6 +18,7 @@ import com.neonsheep.myreceipts.auth.SignedInUser
 import com.neonsheep.myreceipts.net.BackendException
 import com.neonsheep.myreceipts.ui.screens.SignInScreen
 import com.neonsheep.myreceipts.worker.ReceiptBackfillWorker
+import com.neonsheep.myreceipts.worker.ReceiptDownloadWorker
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -268,6 +269,8 @@ class MainActivity : ComponentActivity() {
         val dao = AppDatabase.getInstance(this).receiptDao()
         result.getOrNull()?.let { pdf ->
             ReceiptAmounts.pdfSaved(dao, receipt.clientId, pdf.path, pdf.total)
+            // A queued retry would only fetch the same PDF again. Kept if this tap failed.
+            ReceiptDownloadWorker.cancel(this, receipt.clientId)
             return null
         }
         val e = result.exceptionOrNull()
