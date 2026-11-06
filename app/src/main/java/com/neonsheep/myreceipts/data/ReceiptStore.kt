@@ -32,7 +32,25 @@ data class CapturedReceiptEntity(
     val pdfStatus: String? = null,
     /** Where [totalAmount] came from: see [TotalSource]. Null while nobody has looked. */
     val totalSource: String? = null,
-)
+    /** The store's name as the user typed it. Null: [senderLabel]. */
+    val storeName: String? = null,
+    /** When the purchase was made, as the user set it (epoch millis). Null: [timestamp], when the text arrived. */
+    val purchasedAt: Long? = null,
+    /** A [Category] name for this receipt only. Null: its store's category. */
+    val category: String? = null,
+    /** The last day to return it (epoch millis, end of that day). Null: none set. */
+    val returnBy: Long? = null,
+    /** The last day of its warranty (epoch millis, end of that day). Null: none set. */
+    val warrantyUntil: Long? = null,
+    /** The user said this isn't the same receipt as a similar one, so it isn't flagged again. */
+    @ColumnInfo(defaultValue = "0") val notDuplicate: Boolean = false,
+) {
+    /** The store, as the user named it or as the text said. */
+    val store: String get() = storeName ?: senderLabel
+
+    /** When it was bought: the user's date, else when the text arrived. */
+    val boughtAt: Long get() = purchasedAt ?: timestamp
+}
 
 /** Where a receipt's amount came from. */
 object TotalSource {
@@ -156,6 +174,28 @@ interface ReceiptDao {
     @Query("UPDATE captured_receipts SET totalAmount = :amount, totalSource = 'user' WHERE clientId = :clientId")
     suspend fun setUserTotal(clientId: String, amount: Double?)
 
+    /** The user's store name ([name] null: back to the text's sender). */
+    @Query("UPDATE captured_receipts SET storeName = :name WHERE clientId = :clientId")
+    suspend fun setStoreName(clientId: String, name: String?)
+
+    /** The user's purchase date ([at] null: back to when the text arrived). */
+    @Query("UPDATE captured_receipts SET purchasedAt = :at WHERE clientId = :clientId")
+    suspend fun setPurchasedAt(clientId: String, at: Long?)
+
+    /** This receipt's own category ([category] null: back to its store's). */
+    @Query("UPDATE captured_receipts SET category = :category WHERE clientId = :clientId")
+    suspend fun setCategory(clientId: String, category: String?)
+
+    @Query("UPDATE captured_receipts SET returnBy = :returnBy, warrantyUntil = :warrantyUntil WHERE clientId = :clientId")
+    suspend fun setDeadlines(clientId: String, returnBy: Long?, warrantyUntil: Long?)
+
+    /** Receipts with a deadline still ahead of [now]: the reminders to schedule. */
+    @Query("SELECT * FROM captured_receipts WHERE returnBy >= :now OR warrantyUntil >= :now")
+    suspend fun withDeadlinesAfter(now: Long): List<CapturedReceiptEntity>
+
+    @Query("UPDATE captured_receipts SET notDuplicate = 1 WHERE clientId IN (:clientIds)")
+    suspend fun markNotDuplicate(clientIds: List<String>)
+
     /** Receipts with a PDF on the phone whose amount nobody has looked for yet. */
     @Query("SELECT * FROM captured_receipts WHERE pdfPath IS NOT NULL AND totalAmount IS NULL AND totalSource IS NULL")
     suspend fun withoutTotalLookedFor(): List<CapturedReceiptEntity>
@@ -194,7 +234,7 @@ abstract class AppDatabase : RoomDatabase() {
 }
 
 /** The database version. A bump needs a migration in [MIGRATIONS]. */
-const val DB_VERSION = 6
+const val DB_VERSION = 7
 
 /** Versions 1 and 2 were development builds with no migrations: the only ones an update may wipe. */
 val WIPED_VERSIONS = intArrayOf(1, 2)
@@ -204,7 +244,7 @@ val WIPED_VERSIONS = intArrayOf(1, 2)
  * doesn't reach [AppDatabase]'s version.
  */
 val MIGRATIONS: Array<androidx.room.migration.Migration>
-    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
 /** v4 adds pdfStatus. A real migration, so an update never wipes the owner's receipts. */
 val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
@@ -231,5 +271,17 @@ val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
             "CREATE TABLE IF NOT EXISTS `budgets` (`category` TEXT NOT NULL, `monthlyLimit` REAL NOT NULL, " +
                 "PRIMARY KEY(`category`))",
         )
+    }
+}
+
+/** v7 lets the user correct a receipt (store, date, category), set return and warranty deadlines, and dismiss a duplicate flag. */
+val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN storeName TEXT")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN purchasedAt INTEGER")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN category TEXT")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN returnBy INTEGER")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN warrantyUntil INTEGER")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN notDuplicate INTEGER NOT NULL DEFAULT 0")
     }
 }

@@ -151,4 +151,68 @@ class MigrationTest {
             room.close()
         }
     }
+
+    @Test
+    fun v6ToV7_keepsEverything_andTheUsersCorrectionsWin() = runBlocking {
+        context.deleteDatabase(name)
+        // The v6 schema exactly as Room created it.
+        SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name), null).use { db ->
+            db.execSQL(
+                "CREATE TABLE `captured_receipts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`link` TEXT NOT NULL, `senderLabel` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, " +
+                    "`clientId` TEXT NOT NULL, `capturedAt` INTEGER NOT NULL, `totalAmount` REAL, `pdfPath` TEXT, " +
+                    "`pdfStatus` TEXT, `totalSource` TEXT)",
+            )
+            db.execSQL("CREATE UNIQUE INDEX `index_captured_receipts_clientId` ON `captured_receipts` (`clientId`)")
+            db.execSQL(
+                "CREATE TABLE `store_categories` (`senderLabel` TEXT NOT NULL, `category` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`senderLabel`))",
+            )
+            db.execSQL("CREATE TABLE `budgets` (`category` TEXT NOT NULL, `monthlyLimit` REAL NOT NULL, PRIMARY KEY(`category`))")
+            db.execSQL(
+                "INSERT INTO captured_receipts (link, senderLabel, timestamp, clientId, capturedAt, totalAmount, pdfPath, totalSource) " +
+                    "VALUES ('https://wee.ai/r/a', 'IKEA', 1000, 'c-1', 2, 730.0, '/data/x.pdf', 'page')",
+            )
+            db.execSQL("INSERT INTO store_categories VALUES ('IKEA', 'HOME')")
+            db.execSQL("INSERT INTO budgets VALUES ('ALL', 3000.0)")
+            db.version = 6
+        }
+
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(*MIGRATIONS)
+            .build() // no destructive fallback: a failing migration must fail this test
+        try {
+            val dao = room.receiptDao()
+            val r = dao.getAllOnce().single()
+            assertEquals(730.0, r.totalAmount!!, 0.001)
+            assertEquals("/data/x.pdf", r.pdfPath)
+            assertEquals("IKEA", r.store)
+            assertEquals(1000L, r.boughtAt)
+            assertNull(r.category)
+            assertEquals(false, r.notDuplicate)
+            assertEquals(listOf(StoreCategoryEntity("IKEA", "HOME")), room.spendingDao().storeCategories().first())
+            assertEquals(listOf(BudgetEntity(BudgetEntity.ALL, 3000.0)), room.spendingDao().budgets().first())
+
+            dao.setStoreName("c-1", "IKEA Rishon")
+            dao.setPurchasedAt("c-1", 500L)
+            dao.setCategory("c-1", Category.LEISURE.name)
+            dao.setDeadlines("c-1", returnBy = 5000L, warrantyUntil = 9000L)
+            dao.markNotDuplicate(listOf("c-1"))
+            val edited = dao.getByClientId("c-1")!!
+            assertEquals("IKEA Rishon", edited.store)
+            assertEquals(500L, edited.boughtAt)
+            assertEquals("LEISURE", edited.category)
+            assertEquals(true, edited.notDuplicate)
+            assertEquals(listOf("c-1"), dao.withDeadlinesAfter(6000L).map { it.clientId })
+            assertEquals(emptyList<String>(), dao.withDeadlinesAfter(9001L).map { it.clientId })
+
+            // Clearing a correction falls back to what the text said.
+            dao.setStoreName("c-1", null)
+            dao.setPurchasedAt("c-1", null)
+            assertEquals("IKEA", dao.getByClientId("c-1")!!.store)
+            assertEquals(1000L, dao.getByClientId("c-1")!!.boughtAt)
+        } finally {
+            room.close()
+        }
+    }
 }

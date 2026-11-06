@@ -41,8 +41,11 @@ enum class Category(@param:StringRes val labelRes: Int, val emoji: String) {
     }
 }
 
-/** One receipt, as spending sees it: which store, when, and the amount paid if known. */
-data class Spend(val store: String, val timestamp: Long, val amount: Double?)
+/**
+ * One receipt, as spending sees it: which store, when, and the amount paid if known. [category] is the
+ * receipt's own category when the user moved it; null counts it in its store's.
+ */
+data class Spend(val store: String, val timestamp: Long, val amount: Double?, val category: Category? = null)
 
 /** How much went on what in one month. Amounts in shekels. */
 data class MonthSpending(
@@ -96,7 +99,9 @@ object Spending {
         return MonthSpending(
             month = month,
             total = known.sumOf { it.amount!! }.cents(),
-            byCategory = byStore.groupBy { it.category }.mapValues { (_, s) -> s.sumOf { it.total }.cents() },
+            // By each receipt's category, so a receipt moved to another category counts there.
+            byCategory = known.groupBy { it.category ?: categoryOf(it.store) }
+                .mapValues { (_, rs) -> rs.sumOf { it.amount!! }.cents() },
             byStore = byStore,
             withoutAmount = inMonth.size - known.size,
             receipts = inMonth.size,
