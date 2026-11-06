@@ -100,7 +100,7 @@ class SignInAndPdfScreensTest {
         var signedOut = false
         composeTestRule.setContent {
             MyReceiptsTheme {
-                VendorListScreen(receipts = listOf(receipt), accountEmail = "doron@example.com", onSignOut = { signedOut = true })
+                TestHome(receipts = listOf(receipt), accountEmail = "doron@example.com", onSignOut = { signedOut = true })
             }
         }
 

@@ -16,7 +16,7 @@ class CapturedListScreenTest {
     fun emptyState_showsNoReceiptsMessage() {
         composeTestRule.setContent {
             MyReceiptsTheme {
-                VendorListScreen(receipts = emptyList())
+                TestHome(receipts = emptyList())
             }
         }
 
@@ -43,7 +43,7 @@ class CapturedListScreenTest {
 
         composeTestRule.setContent {
             MyReceiptsTheme {
-                VendorListScreen(receipts = receipts)
+                TestHome(receipts = receipts)
             }
         }
 
