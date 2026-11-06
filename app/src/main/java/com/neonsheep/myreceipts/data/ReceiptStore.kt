@@ -163,7 +163,7 @@ interface ReceiptDao {
 
 @Database(
     entities = [CapturedReceiptEntity::class, StoreCategoryEntity::class, BudgetEntity::class],
-    version = 6,
+    version = DB_VERSION,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -182,14 +182,29 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "receipts.db",
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .addMigrations(*MIGRATIONS)
+                    // Only the two development versions that predate real migrations may be wiped. Any later
+                    // version without a migration must fail loudly in tests, never erase the owner's receipts.
+                    .fallbackToDestructiveMigrationFrom(true, *WIPED_VERSIONS)
                     .build()
                     .also { INSTANCE = it }
             }
         }
     }
 }
+
+/** The database version. A bump needs a migration in [MIGRATIONS]. */
+const val DB_VERSION = 6
+
+/** Versions 1 and 2 were development builds with no migrations: the only ones an update may wipe. */
+val WIPED_VERSIONS = intArrayOf(1, 2)
+
+/**
+ * Every migration, oldest first. Each version bump adds one here; MigrationsTest fails when the chain
+ * doesn't reach [AppDatabase]'s version.
+ */
+val MIGRATIONS: Array<androidx.room.migration.Migration>
+    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 
 /** v4 adds pdfStatus. A real migration, so an update never wipes the owner's receipts. */
 val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
