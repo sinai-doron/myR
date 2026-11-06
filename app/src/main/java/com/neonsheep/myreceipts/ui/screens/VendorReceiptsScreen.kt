@@ -175,6 +175,7 @@ private fun ReceiptRow(receipt: CapturedReceipt, onInfoClick: () -> Unit) {
 internal fun DownloadPill(receipt: CapturedReceipt, hasPdf: Boolean = receipt.hasPdf()) {
     // hasPdf is a parameter so the pill redraws when the file appears, even if the receipt doesn't change
     when {
+        receipt.isSample() -> Pill("Sample", PillTone.Grey)
         hasPdf -> Pill("PDF saved", PillTone.Green)
         receipt.pdfStatus == PdfStatus.UNSUPPORTED -> Pill("Store not supported yet", PillTone.Grey)
         receipt.pdfStatus == PdfStatus.GONE -> Pill("No longer available", PillTone.Grey)
@@ -184,8 +185,9 @@ internal fun DownloadPill(receipt: CapturedReceipt, hasPdf: Boolean = receipt.ha
     }
 }
 
-/** Opens the saved PDF, or the original link in the browser when there's no PDF. */
+/** Opens the saved PDF, or the original link in the browser when there's no PDF. A sample has neither. */
 internal fun openReceipt(context: Context, receipt: CapturedReceipt) {
+    if (receipt.isSample()) return
     if (receipt.hasPdf() && receipt.pdfPath != null) {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(receipt.pdfPath))
         context.startActivity(

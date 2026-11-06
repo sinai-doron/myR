@@ -44,6 +44,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.neonsheep.myreceipts.R
 import com.neonsheep.myreceipts.data.BudgetStatus
+import com.neonsheep.myreceipts.data.SampleReceipts
 import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.SectionCard
@@ -89,6 +90,8 @@ fun VendorListScreen(
     /** The whole-month budget, if one is set. */
     monthBudget: Double? = null,
     onOpenSpending: () -> Unit = {},
+    onAddSamples: () -> Unit = {},
+    onRemoveSamples: () -> Unit = {},
 ) {
     var showAccount by remember { mutableStateOf(false) }
     val vendors = remember(receipts) {
@@ -138,11 +141,17 @@ fun VendorListScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        if (vendors.isEmpty()) {
-            EmptyState()
-        } else {
-            MonthCard(receipts, monthBudget, onOpenSpending)
+        if (receipts.any { it.isSample() }) {
+            SamplesBanner(onRemove = onRemoveSamples)
             Spacer(Modifier.height(12.dp))
+        }
+
+        // The month and its budget, even before the first receipt
+        MonthCard(receipts, monthBudget, onOpenSpending)
+        Spacer(Modifier.height(12.dp))
+        if (vendors.isEmpty()) {
+            EmptyState(onAddSamples)
+        } else {
             SectionCard(padding = 0.dp) {
                 CardTitle(
                     "🧾 Stores",
@@ -236,8 +245,32 @@ private fun MonthCard(receipts: List<CapturedReceipt>, budget: Double?, onClick:
     }
 }
 
+/** While sample receipts are shown: says so, and removes them all. */
 @Composable
-private fun EmptyState() {
+private fun SamplesBanner(onRemove: () -> Unit) {
+    SectionCard(modifier = Modifier.testTag("samples_banner"), padding = 16.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Showing sample receipts",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    "Made-up receipts to try the app. Your real receipts appear beside them.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onRemove, modifier = Modifier.testTag("remove_samples")) {
+                Text("Remove", color = Purple)
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(onAddSamples: () -> Unit) {
     SectionCard(padding = 28.dp) {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
@@ -266,6 +299,10 @@ private fun EmptyState() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            Spacer(Modifier.height(12.dp))
+            TextButton(onClick = onAddSamples, modifier = Modifier.testTag("add_samples")) {
+                Text("Try with sample receipts", color = Purple)
+            }
         }
     }
 }
@@ -324,6 +361,9 @@ internal fun formatWholeAmount(amount: Double): String = wholeAmountFormatter.fo
 
 /** Receipts older than this are kept but never downloaded automatically. */
 internal const val AUTO_DOWNLOAD_WINDOW_MS = 30L * 24 * 60 * 60 * 1000
+
+/** A made-up receipt from "Try with sample receipts". */
+internal fun CapturedReceipt.isSample(): Boolean = SampleReceipts.isSample(clientId)
 
 internal fun CapturedReceipt.hasPdf(): Boolean = pdfPath?.let { File(it).exists() } == true
 internal fun CapturedReceipt.isPastDownloadWindow(): Boolean =

@@ -151,6 +151,12 @@ fun ReceiptDetailScreen(
                 }
             }
             when {
+                receipt.isSample() -> Text(
+                    "A sample receipt, made up to try the app. It isn't a real purchase and has no PDF.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("sample_note"),
+                )
                 hasPdf -> {
                     PrimaryButton("Open PDF") { openReceipt(context, receipt) }
                     SecondaryButton(stringResource(R.string.open_in_browser)) { openInBrowser(context, receipt) }
@@ -163,7 +169,7 @@ fun ReceiptDetailScreen(
             }
             // Always offered: fetch the PDF again and replace the saved one, e.g. to swap a printout
             // for the store's own file.
-            if (hasPdf && onGetPdf != null) {
+            if (hasPdf && onGetPdf != null && !receipt.isSample()) {
                 TextButton(
                     onClick = getPdf,
                     enabled = !fetching,

@@ -47,6 +47,9 @@ object TotalSource {
 
     /** Looked for in the PDF and not found: not looked for again, but a page amount may still come. */
     const val NONE = "none"
+
+    /** A made-up receipt's amount ([SampleReceipts]). */
+    const val SAMPLE = "sample"
 }
 
 /** The category a store's receipts count in, as the user set it. Stores not here use [Category.guessFor]. */
@@ -96,6 +99,9 @@ object PdfStatus {
 
     /** The background catch-up tried once and the backend couldn't make a PDF. Not retried on its own. */
     const val FAILED = "failed"
+
+    /** A made-up receipt ([SampleReceipts]): there is no PDF to get. */
+    const val SAMPLE = "sample"
 }
 
 @Dao
@@ -111,6 +117,13 @@ interface ReceiptDao {
 
     @Query("DELETE FROM captured_receipts WHERE clientId = :clientId")
     suspend fun deleteByClientId(clientId: String)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(receipts: List<CapturedReceiptEntity>)
+
+    /** Removes every made-up receipt ([SampleReceipts]), and nothing else. */
+    @Query("DELETE FROM captured_receipts WHERE clientId LIKE 'sample-%'")
+    suspend fun deleteSamples()
 
     @Query("UPDATE captured_receipts SET pdfPath = :pdfPath, pdfStatus = NULL WHERE clientId = :clientId")
     suspend fun updatePdfPath(clientId: String, pdfPath: String)
