@@ -1,6 +1,34 @@
 package com.neonsheep.myreceipts.ui.screens
 
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import com.neonsheep.myreceipts.data.BudgetEntity
+import com.neonsheep.myreceipts.data.Category
+import com.neonsheep.myreceipts.data.MonthSpending
+import com.neonsheep.myreceipts.data.Spend
+import com.neonsheep.myreceipts.data.Spending
+import com.neonsheep.myreceipts.ui.components.AccountInitial
+import com.neonsheep.myreceipts.ui.components.Badge
+import com.neonsheep.myreceipts.ui.components.EmojiTile
+import com.neonsheep.myreceipts.ui.components.SectionLabel
+import com.neonsheep.myreceipts.ui.components.storeDisplayName
+import com.neonsheep.myreceipts.ui.theme.Chip
+import com.neonsheep.myreceipts.ui.theme.Faint
+import com.neonsheep.myreceipts.ui.theme.GreenOnDark
+import com.neonsheep.myreceipts.ui.theme.Hero
+import com.neonsheep.myreceipts.ui.theme.HeroChip
+import com.neonsheep.myreceipts.ui.theme.HeroText
+import com.neonsheep.myreceipts.ui.theme.HeroTrack
+import com.neonsheep.myreceipts.ui.theme.Muted
+import com.neonsheep.myreceipts.ui.theme.NearBadge
+import com.neonsheep.myreceipts.ui.theme.OverBadge
+import com.neonsheep.myreceipts.ui.theme.OverBadgeInk
+import java.time.LocalDate
+import java.time.YearMonth
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,11 +78,10 @@ import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.SectionCard
 import com.neonsheep.myreceipts.ui.components.Stat
-import com.neonsheep.myreceipts.ui.theme.DangerRed
+import com.neonsheep.myreceipts.ui.theme.Red
 import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
-import com.neonsheep.myreceipts.ui.theme.Purple
-import com.neonsheep.myreceipts.ui.theme.PurpleLight
-import com.neonsheep.myreceipts.ui.theme.SuccessGreen
+import com.neonsheep.myreceipts.ui.theme.Green
+import com.neonsheep.myreceipts.ui.theme.GreenSoft
 import java.io.File
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -81,97 +108,102 @@ data class VendorSummary(
 )
 
 @Composable
-fun VendorListScreen(
+fun HomeScreen(
     receipts: List<CapturedReceipt>,
-    onVendorClick: (String) -> Unit = {},
+    /** This month, by category and store, from the receipts with an amount. */
+    spending: MonthSpending,
+    /** Monthly limits by category name, and [BudgetEntity.ALL] for the whole month. */
+    budgets: Map<String, Double>,
+    categoryOf: (String) -> Category,
+    modifier: Modifier = Modifier,
     accountEmail: String? = null,
     onSignOut: () -> Unit = {},
     captureOff: Boolean = false,
     onTurnOnCapture: () -> Unit = {},
-    /** The whole-month budget, if one is set. */
-    monthBudget: Double? = null,
     onOpenSpending: () -> Unit = {},
+    onOpenStores: () -> Unit = {},
+    onOpenReceipt: (CapturedReceipt) -> Unit = {},
     onAddSamples: () -> Unit = {},
     onRemoveSamples: () -> Unit = {},
 ) {
     var showAccount by remember { mutableStateOf(false) }
-    val vendors = remember(receipts) {
-        receipts.groupBy { it.senderLabel }
-            .map { (name, items) ->
-                VendorSummary(
-                    name = name,
-                    receiptCount = items.size,
-                    lastReceiptDate = items.maxOf { it.timestamp },
-                )
-            }
-            .sortedByDescending { it.lastReceiptDate }
-    }
+    val monthName = remember { SimpleDateFormat("LLLL", Locale.getDefault()).format(Date()) }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Header, as on gym-tracker's home
-        Row(modifier = Modifier.padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.app_name),
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f),
-            )
+        // The app, the month, and the account
+        Row(
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Chip),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(painterResource(R.drawable.ic_receipt), contentDescription = null, modifier = Modifier.size(28.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                SectionLabel(stringResource(R.string.app_name))
+                Text(
+                    monthName,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
             if (accountEmail != null) {
-                AccountButton(email = accountEmail, onClick = { showAccount = true })
+                AccountInitial(
+                    accountEmail,
+                    Modifier.clickable(onClickLabel = stringResource(R.string.signed_in)) { showAccount = true }.testTag("account"),
+                )
             }
         }
-        Text(
-            if (receipts.isEmpty()) stringResource(R.string.home_subtitle_empty)
-            else stringResource(R.string.home_subtitle, receiptCountLabel(receipts.size), storeCountLabel(vendors.size)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Spacer(Modifier.height(20.dp))
 
-        if (captureOff) {
-            CaptureOffBanner(onTurnOn = onTurnOnCapture)
-            Spacer(Modifier.height(12.dp))
-        }
-
-        if (receipts.any { it.isSample() }) {
-            SamplesBanner(onRemove = onRemoveSamples)
-            Spacer(Modifier.height(12.dp))
-        }
+        if (captureOff) CaptureOffBanner(onTurnOn = onTurnOnCapture)
+        if (receipts.any { it.isSample() }) SamplesBanner(onRemove = onRemoveSamples)
 
         // The month and its budget, even before the first receipt
-        MonthCard(receipts, monthBudget, onOpenSpending)
-        Spacer(Modifier.height(12.dp))
-        if (vendors.isEmpty()) {
-            EmptyState(onAddSamples)
-        } else {
-            SectionCard(padding = 0.dp) {
-                CardTitle(
-                    stringResource(R.string.stores_title),
-                    trailing = vendors.size.toString(),
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 6.dp),
+        MonthHero(spending.total, budgets[BudgetEntity.ALL], onOpenSpending)
+
+        val tiles = remember(spending, budgets) {
+            Category.entries
+                .filter { (spending.byCategory[it] ?: 0.0) > 0 || budgets.containsKey(it.name) }
+                .sortedByDescending { spending.byCategory[it] ?: 0.0 }
+                .take(4)
+        }
+        if (tiles.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                SectionLabel(stringResource(R.string.category_heading), Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.budgets_link),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = Green,
+                    modifier = Modifier.clickable(onClick = onOpenSpending).padding(4.dp),
                 )
-                vendors.forEachIndexed { index, vendor ->
-                    if (index > 0) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 76.dp, end = 20.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
+            }
+            tiles.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { c ->
+                        CategoryTile(c, spending.byCategory[c] ?: 0.0, budgets[c.name], onOpenSpending, Modifier.weight(1f))
                     }
-                    VendorRow(vendor = vendor, onClick = { onVendorClick(vendor.name) })
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
-                Spacer(Modifier.height(8.dp))
             }
         }
-        Spacer(Modifier.height(16.dp))
+
+        if (receipts.isEmpty()) {
+            EmptyState(onAddSamples)
+        } else {
+            RecentReceipts(receipts, categoryOf, onOpenReceipt, onOpenStores)
+        }
+        Spacer(Modifier.height(4.dp))
     }
 
     if (showAccount && accountEmail != null) {
@@ -181,68 +213,196 @@ fun VendorListScreen(
             text = { Text(accountEmail) },
             confirmButton = {
                 TextButton(onClick = { showAccount = false; onSignOut() }) {
-                    Text(stringResource(R.string.sign_out), color = DangerRed)
+                    Text(stringResource(R.string.sign_out), color = Red)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAccount = false }) { Text(stringResource(R.string.close), color = Purple) }
+                TextButton(onClick = { showAccount = false }) { Text(stringResource(R.string.close), color = Green) }
             },
             containerColor = MaterialTheme.colorScheme.surface,
         )
     }
 }
 
-/** The signed-in account's initial in a round purple badge; tap for the account and sign-out. */
+/** The dark card: this month's spending, the budget and what's left. Tap for the spending tab. */
 @Composable
-private fun AccountButton(email: String, onClick: () -> Unit) {
-    Box(
+private fun MonthHero(spent: Double, budget: Double?, onClick: () -> Unit) {
+    val today = remember { LocalDate.now() }
+    val daysLeft = today.lengthOfMonth() - today.dayOfMonth
+    Column(
         modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(PurpleLight)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Hero)
             .clickable(onClick = onClick)
-            .testTag("account"),
-        contentAlignment = Alignment.Center,
+            .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 16.dp)
+            .testTag("month_card"),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel(stringResource(R.string.spent_this_month), Modifier.weight(1f), color = HeroText)
+            if (budget != null) {
+                Text(
+                    stringResource(R.string.of_budget, formatAmount(budget)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = HeroText,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(HeroChip).padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
         Text(
-            email.firstOrNull()?.uppercase() ?: "?",
+            formatAmount(spent),
+            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 38.sp, lineHeight = 42.sp, fontWeight = FontWeight.Bold),
+            color = Color.White,
+        )
+        if (budget != null) {
+            val status = BudgetStatus(spent, budget)
+            LinearProgressIndicator(
+                progress = { status.fraction.coerceIn(0.0, 1.0).toFloat() },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                color = when (status.state) {
+                    BudgetStatus.State.OK -> GreenOnDark
+                    BudgetStatus.State.NEAR -> NearBadge
+                    BudgetStatus.State.OVER -> OverBadge
+                },
+                trackColor = HeroTrack,
+                drawStopIndicator = {},
+                gapSize = 0.dp,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.testTag("budget_${status.state.name}")) {
+                val over = status.state == BudgetStatus.State.OVER
+                Text(
+                    if (over) stringResource(R.string.hero_over, formatAmount(-status.left))
+                    else stringResource(R.string.hero_left, formatAmount(status.left)),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = if (over) OverBadgeInk else Color.White,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (over) OverBadge else Green)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    pluralStringResource(R.plurals.days_to_go, daysLeft, daysLeft),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = HeroText,
+                )
+            }
+        } else {
+            Text(
+                stringResource(R.string.see_spending),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                color = GreenOnDark,
+            )
+        }
+    }
+}
+
+/** A category this month: what it came to, and how much of its budget, if it has one. */
+@Composable
+private fun CategoryTile(category: Category, spent: Double, limit: Double?, onClick: () -> Unit, modifier: Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+            .padding(12.dp)
+            .testTag("tile_${category.name}"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            EmojiTile(category.emoji)
+            Spacer(Modifier.weight(1f))
+            if (limit != null) {
+                val status = BudgetStatus(spent, limit)
+                Badge(
+                    if (status.state == BudgetStatus.State.OVER) stringResource(R.string.tile_over, formatAmount(-status.left))
+                    else stringResource(R.string.percent, Math.round(status.fraction * 100).toInt()),
+                    status.state,
+                )
+            }
+        }
+        Text(
+            stringResource(category.labelRes),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Muted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            formatAmount(spent),
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = Purple,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
-/** This month at a glance: receipts, what they came to, and the budget. Tap for the spending screen. */
+/** The last three receipts, newest first, and the way to every store. */
 @Composable
-private fun MonthCard(receipts: List<CapturedReceipt>, budget: Double?, onClick: () -> Unit) {
-    val monthStart = remember {
-        Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
-    val thisMonth = remember(receipts) { receipts.filter { it.timestamp >= monthStart } }
-    val spent = remember(receipts) { Math.round(thisMonth.sumOf { it.totalAmount ?: 0.0 } * 100) / 100.0 }
-    val monthName = remember { SimpleDateFormat("LLLL", Locale.getDefault()).format(Date()) }
-
-    SectionCard(modifier = Modifier.clickable(onClick = onClick).testTag("month_card")) {
-        CardTitle(stringResource(R.string.this_month), trailing = monthName)
-        Spacer(Modifier.height(16.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Stat(thisMonth.size.toString(), stringResource(R.string.stat_receipts), Purple, Modifier.weight(1f))
-            Stat(thisMonth.map { it.senderLabel }.distinct().size.toString(), stringResource(R.string.stat_stores), Purple, Modifier.weight(1f))
-            Stat(formatWholeAmount(spent), stringResource(R.string.stat_spent), SuccessGreen, Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(12.dp))
-        if (budget != null) {
-            BudgetBar(BudgetStatus(spent, budget), onClick = onClick)
-        } else {
+private fun RecentReceipts(
+    receipts: List<CapturedReceipt>,
+    categoryOf: (String) -> Category,
+    onOpenReceipt: (CapturedReceipt) -> Unit,
+    onOpenStores: () -> Unit,
+) {
+    val recent = remember(receipts) { receipts.sortedByDescending { it.timestamp }.take(3) }
+    SectionCard(padding = 0.dp) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 8.dp, top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                stringResource(R.string.see_spending),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Purple,
+                stringResource(R.string.recent_receipts),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
+            TextButton(onClick = onOpenStores, modifier = Modifier.testTag("all_stores")) {
+                Text(stringResource(R.string.all_stores), color = Green)
+            }
         }
+        recent.forEach { r ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenReceipt(r) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+                    .testTag("recent_${r.clientId}"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MerchantLogo(r.senderLabel, size = 38.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            storeDisplayName(r.senderLabel),
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        DownloadPill(r)
+                    }
+                    Text(
+                        stringResource(R.string.vendor_row, stringResource(categoryOf(r.senderLabel).labelRes), formatShortTimestamp(r.timestamp)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Faint,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (r.totalAmount != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        formatAmount(r.totalAmount),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
     }
 }
 
@@ -264,7 +424,7 @@ private fun SamplesBanner(onRemove: () -> Unit) {
                 )
             }
             TextButton(onClick = onRemove, modifier = Modifier.testTag("remove_samples")) {
-                Text(stringResource(R.string.remove), color = Purple)
+                Text(stringResource(R.string.remove), color = Green)
             }
         }
     }
@@ -277,7 +437,7 @@ private fun EmptyState(onAddSamples: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .background(PurpleLight, CircleShape),
+                    .background(GreenSoft, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 // The app logo in its own colours (tinting flattens it)
@@ -302,40 +462,9 @@ private fun EmptyState(onAddSamples: () -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
             TextButton(onClick = onAddSamples, modifier = Modifier.testTag("add_samples")) {
-                Text(stringResource(R.string.try_samples), color = Purple)
+                Text(stringResource(R.string.try_samples), color = Green)
             }
         }
-    }
-}
-
-@Composable
-private fun VendorRow(vendor: VendorSummary, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MerchantLogo(senderLabel = vendor.name)
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                vendor.name,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                stringResource(R.string.vendor_row, receiptCountLabel(vendor.receiptCount), formatDate(vendor.lastReceiptDate)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -343,26 +472,27 @@ private fun VendorRow(vendor: VendorSummary, onClick: () -> Unit) {
 internal fun receiptCountLabel(count: Int): String = pluralStringResource(R.plurals.receipt_count, count, count)
 
 @Composable
-private fun storeCountLabel(count: Int): String = pluralStringResource(R.plurals.store_count, count, count)
-
-private val amountFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("he-IL")).apply {
-    currency = Currency.getInstance("ILS")
-}
+internal fun storeCountLabel(count: Int): String = pluralStringResource(R.plurals.store_count, count, count)
 
 // In the app's language at the time of the call, so a language change applies at once.
 internal fun formatTimestamp(epochMillis: Long): String =
     SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(epochMillis))
+internal fun formatShortTimestamp(epochMillis: Long): String =
+    SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()).format(Date(epochMillis))
 internal fun formatDate(epochMillis: Long): String =
     SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(epochMillis))
-internal fun formatAmount(amount: Double): String = amountFormatter.format(amount)
-
-private val wholeAmountFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("he-IL")).apply {
-    currency = Currency.getInstance("ILS")
-    maximumFractionDigits = 0
-}
+/** Shekels in the app's language: "₪442.20" in English, "442.20 ₪" in Hebrew. */
+internal fun formatAmount(amount: Double): String =
+    NumberFormat.getCurrencyInstance(Locale.getDefault()).apply {
+        currency = Currency.getInstance("ILS")
+    }.format(amount)
 
 /** Rounded to whole shekels, for a tile with little room. */
-internal fun formatWholeAmount(amount: Double): String = wholeAmountFormatter.format(amount)
+internal fun formatWholeAmount(amount: Double): String =
+    NumberFormat.getCurrencyInstance(Locale.getDefault()).apply {
+        currency = Currency.getInstance("ILS")
+        maximumFractionDigits = 0
+    }.format(amount)
 
 /** Receipts older than this are kept but never downloaded automatically. */
 internal const val AUTO_DOWNLOAD_WINDOW_MS = 30L * 24 * 60 * 60 * 1000
@@ -374,23 +504,19 @@ internal fun CapturedReceipt.hasPdf(): Boolean = pdfPath?.let { File(it).exists(
 internal fun CapturedReceipt.isPastDownloadWindow(): Boolean =
     System.currentTimeMillis() - timestamp > AUTO_DOWNLOAD_WINDOW_MS
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, heightDp = 900)
 @Composable
-private fun PreviewEmpty() {
-    MyReceiptsTheme { VendorListScreen(receipts = emptyList()) }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PreviewWithVendors() {
+private fun PreviewHome() {
+    val receipts = SampleReceipts.build().map {
+        CapturedReceipt(it.link, it.senderLabel, it.timestamp, it.clientId, it.totalAmount)
+    }
     MyReceiptsTheme {
-        VendorListScreen(
-            receipts = listOf(
-                CapturedReceipt("https://shufersal.co.il/r/1", "Shufersal", 1728900000000L, "p-1", 74.30),
-                CapturedReceipt("https://shufersal.co.il/r/2", "Shufersal", 1728800000000L, "p-2", 120.0),
-                CapturedReceipt("https://pairzon.com/r/1", "OSHERAD", 1728700000000L, "p-3"),
-                CapturedReceipt("https://wee.ai/r/1", "IKEA", 1728600000000L, "p-4"),
-            ),
+        HomeScreen(
+            receipts = receipts,
+            spending = Spending.forMonth(YearMonth.now(), receipts.map { Spend(it.senderLabel, it.timestamp, it.totalAmount) }, Category::guessFor),
+            budgets = mapOf(BudgetEntity.ALL to 2000.0, "GROCERIES" to 400.0),
+            categoryOf = Category::guessFor,
+            accountEmail = "doron@example.com",
         )
     }
 }

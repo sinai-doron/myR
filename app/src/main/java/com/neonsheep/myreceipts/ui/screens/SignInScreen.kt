@@ -31,10 +31,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.neonsheep.myreceipts.R
 import com.neonsheep.myreceipts.ui.components.SectionCard
-import com.neonsheep.myreceipts.ui.theme.DangerRed
+import com.neonsheep.myreceipts.ui.theme.Red
 import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
-import com.neonsheep.myreceipts.ui.theme.Purple
-import com.neonsheep.myreceipts.ui.theme.PurpleLight
+import com.neonsheep.myreceipts.ui.theme.Green
+import com.neonsheep.myreceipts.ui.theme.GreenSoft
 
 /** The first screen when signed out: one card, one button, as gym-tracker would do it. */
 @Composable
@@ -57,7 +57,7 @@ fun SignInScreen(signingIn: Boolean, error: String?, onSignIn: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .size(80.dp)
-                        .background(PurpleLight, CircleShape),
+                        .background(GreenSoft, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
@@ -87,7 +87,7 @@ fun SignInScreen(signingIn: Boolean, error: String?, onSignIn: () -> Unit) {
                         .height(52.dp)
                         .testTag("sign_in"),
                     shape = MaterialTheme.shapes.large,
-                    colors = ButtonDefaults.buttonColors(containerColor = Purple),
+                    colors = ButtonDefaults.buttonColors(containerColor = Green),
                 ) {
                     if (signingIn) {
                         CircularProgressIndicator(
@@ -107,7 +107,7 @@ fun SignInScreen(signingIn: Boolean, error: String?, onSignIn: () -> Unit) {
                     Text(
                         error,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = DangerRed,
+                        color = Red,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.testTag("sign_in_error"),
                     )

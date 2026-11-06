@@ -48,9 +48,8 @@ import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.SectionCard
 import com.neonsheep.myreceipts.ui.components.TopBar
-import com.neonsheep.myreceipts.ui.theme.DangerRed
-import com.neonsheep.myreceipts.ui.theme.Purple
-import com.neonsheep.myreceipts.ui.theme.SuccessInk
+import com.neonsheep.myreceipts.ui.theme.Red
+import com.neonsheep.myreceipts.ui.theme.Green
 import kotlinx.coroutines.launch
 
 @Composable
@@ -105,7 +104,7 @@ fun ReceiptDetailScreen(
                         Text(
                             formatAmount(receipt.totalAmount),
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = SuccessInk,
+                            color = Green,
                             modifier = Modifier
                                 .testTag("amount")
                                 .then(if (onSetAmount != null) Modifier.clickable { editingAmount = true } else Modifier),
@@ -119,7 +118,7 @@ fun ReceiptDetailScreen(
                     ) {
                         Text(
                             stringResource(if (receipt.totalAmount == null) R.string.add_amount else R.string.change_amount),
-                            color = Purple,
+                            color = Green,
                         )
                     }
                 }
@@ -178,12 +177,12 @@ fun ReceiptDetailScreen(
                         .testTag("get_pdf_again"),
                 ) {
                     if (fetching) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Purple)
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Green)
                     } else {
                         Text(
                             stringResource(R.string.get_pdf_again),
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = Purple,
+                            color = Green,
                         )
                     }
                 }
@@ -202,7 +201,7 @@ fun ReceiptDetailScreen(
                 Text(
                     fetchError!!,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = DangerRed,
+                    color = Red,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -266,7 +265,7 @@ private fun PrimaryButton(text: String, loading: Boolean = false, tag: String? =
             .height(52.dp)
             .then(if (tag != null) Modifier.testTag(tag) else Modifier),
         shape = MaterialTheme.shapes.large,
-        colors = ButtonDefaults.buttonColors(containerColor = Purple),
+        colors = ButtonDefaults.buttonColors(containerColor = Green),
     ) {
         if (loading) {
             CircularProgressIndicator(
@@ -289,7 +288,7 @@ private fun SecondaryButton(text: String, onClick: () -> Unit) {
             .height(52.dp),
         shape = MaterialTheme.shapes.large,
         border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = Purple),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = Green),
     ) {
         Text(text, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
     }

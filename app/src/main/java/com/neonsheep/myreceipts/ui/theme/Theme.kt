@@ -4,23 +4,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
-// Light only, like gym-tracker
+// Light only
 private val LightColorScheme = lightColorScheme(
-    primary = Purple,
-    onPrimary = TextOnPurple,
-    primaryContainer = PurpleLight,
-    onPrimaryContainer = PurpleDark,
-    secondary = SuccessGreen,
+    primary = Green,
+    onPrimary = White,
+    primaryContainer = GreenSoft,
+    onPrimaryContainer = GreenDark,
+    secondary = Green,
     onSecondary = White,
-    background = LavenderBackground,
-    onBackground = TextPrimary,
+    background = Ground,
+    onBackground = Ink,
     surface = White,
-    onSurface = TextPrimary,
-    onSurfaceVariant = TextSecondary,
-    surfaceVariant = LightSurface,
-    outline = Outline,
-    outlineVariant = Divider,
-    error = DangerRed,
+    onSurface = Ink,
+    onSurfaceVariant = Faint,
+    surfaceVariant = Soft,
+    surfaceContainerHigh = White,
+    outline = Line,
+    outlineVariant = Line,
+    error = Red,
 )
 
 @Composable
