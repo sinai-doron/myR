@@ -33,6 +33,16 @@ class SpendingTest {
     }
 
     @Test
+    fun aReceiptMovedToAnotherCategory_countsThere_andItsStoreKeepsItsOwn() {
+        val moved = receipts + Spend("Shufersal", at(2026, 11, 5), 60.0, Category.HOME)
+        val s = Spending.forMonth(YearMonth.of(2026, 11), moved, Category::guessFor, zone)
+        assertEquals(436.20, s.byCategory[Category.GROCERIES]!!, 0.001)
+        assertEquals(60.0, s.byCategory[Category.HOME]!!, 0.001)
+        assertEquals(Category.GROCERIES, s.byStore.first { it.store == "Shufersal" }.category)
+        assertEquals(1022.16, s.total, 0.001)
+    }
+
+    @Test
     fun theUsersCategoryForAStore_wins() {
         val s = Spending.forMonth(YearMonth.of(2026, 11), receipts, { if (it == "SuperPharm") Category.HOME else Category.guessFor(it) }, zone)
         assertEquals(25.90, s.byCategory[Category.HOME]!!, 0.001)

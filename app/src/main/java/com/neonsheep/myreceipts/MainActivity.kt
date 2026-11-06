@@ -207,7 +207,7 @@ class MainActivity : ComponentActivity() {
                         val categoryOf = { store: String ->
                             Category.fromName(storeCategories[store]) ?: Category.guessFor(store)
                         }
-                        val spends = receipts.map { Spend(it.senderLabel, it.timestamp, it.totalAmount) }
+                        val spends = receipts.map { Spend(it.senderLabel, it.timestamp, it.totalAmount, Category.fromName(it.category)) }
                         val thisMonth = Spending.forMonth(YearMonth.now(), spends, categoryOf)
                         // Back from another tab goes home; from home, it leaves the app.
                         BackHandler(enabled = tab != Tab.HOME) { tab = Tab.HOME }
@@ -360,11 +360,15 @@ class MainActivity : ComponentActivity() {
 
 fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     link = link,
-    senderLabel = senderLabel,
-    timestamp = timestamp,
+    senderLabel = store,
+    timestamp = boughtAt,
     clientId = clientId,
     totalAmount = totalAmount,
     pdfPath = pdfPath,
     pdfStatus = pdfStatus,
     totalSource = totalSource,
+    category = category,
+    returnBy = returnBy,
+    warrantyUntil = warrantyUntil,
+    notDuplicate = notDuplicate,
 )

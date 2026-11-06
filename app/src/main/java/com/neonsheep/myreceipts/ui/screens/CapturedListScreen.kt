@@ -90,6 +90,10 @@ import java.util.Currency
 import java.util.Date
 import java.util.Locale
 
+/**
+ * A receipt as the screens show it. [senderLabel] and [timestamp] are the store and purchase time the user
+ * set, else what the text said ([CapturedReceiptEntity.store], [CapturedReceiptEntity.boughtAt]).
+ */
 data class CapturedReceipt(
     val link: String,
     val senderLabel: String,
@@ -99,6 +103,11 @@ data class CapturedReceipt(
     val pdfPath: String? = null,
     val pdfStatus: String? = null,
     val totalSource: String? = null,
+    /** This receipt's own [Category] name, when the user moved it; null: its store's. */
+    val category: String? = null,
+    val returnBy: Long? = null,
+    val warrantyUntil: Long? = null,
+    val notDuplicate: Boolean = false,
 )
 
 data class VendorSummary(
