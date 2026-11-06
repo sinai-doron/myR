@@ -23,7 +23,7 @@ class SampleReceiptsScreenTest {
         var opened = 0
         composeTestRule.setContent {
             MyReceiptsTheme {
-                VendorListScreen(receipts = emptyList(), onAddSamples = { added++ }, onOpenSpending = { opened++ })
+                TestHome(receipts = emptyList(), onAddSamples = { added++ }, onOpenSpending = { opened++ })
             }
         }
         composeTestRule.onNodeWithTag("month_card").assertIsDisplayed().performClick()
@@ -37,7 +37,7 @@ class SampleReceiptsScreenTest {
         var removed = 0
         val samples = SampleReceipts.build().map { it.toUiModel() }
         composeTestRule.setContent {
-            MyReceiptsTheme { VendorListScreen(receipts = samples, onRemoveSamples = { removed++ }) }
+            MyReceiptsTheme { TestHome(receipts = samples, onRemoveSamples = { removed++ }) }
         }
         composeTestRule.onNodeWithTag("samples_banner").assertIsDisplayed()
         composeTestRule.onNodeWithTag("remove_samples").performClick()

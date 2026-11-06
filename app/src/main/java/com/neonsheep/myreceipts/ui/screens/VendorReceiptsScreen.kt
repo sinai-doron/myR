@@ -46,8 +46,7 @@ import com.neonsheep.myreceipts.ui.components.Pill
 import com.neonsheep.myreceipts.ui.components.PillTone
 import com.neonsheep.myreceipts.ui.components.SectionCard
 import com.neonsheep.myreceipts.ui.components.TopBar
-import com.neonsheep.myreceipts.ui.theme.Purple
-import com.neonsheep.myreceipts.ui.theme.SuccessInk
+import com.neonsheep.myreceipts.ui.theme.Green
 import java.io.File
 
 @Composable
@@ -154,7 +153,7 @@ private fun ReceiptRow(receipt: CapturedReceipt, onInfoClick: () -> Unit) {
                 Text(
                     formatAmount(receipt.totalAmount),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = SuccessInk,
+                    color = Green,
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -165,7 +164,7 @@ private fun ReceiptRow(receipt: CapturedReceipt, onInfoClick: () -> Unit) {
             Icon(
                 Icons.Outlined.Info,
                 contentDescription = stringResource(R.string.details),
-                tint = Purple.copy(alpha = 0.6f),
+                tint = Green.copy(alpha = 0.6f),
                 modifier = Modifier.size(24.dp),
             )
         }
@@ -183,7 +182,7 @@ internal fun DownloadPill(receipt: CapturedReceipt, hasPdf: Boolean = receipt.ha
         receipt.pdfStatus == PdfStatus.GONE -> Pill(stringResource(R.string.pill_gone), PillTone.Grey)
         receipt.pdfStatus == PdfStatus.FAILED -> Pill(stringResource(R.string.pill_failed), PillTone.Grey)
         receipt.isPastDownloadWindow() -> Pill(stringResource(R.string.pill_link_only), PillTone.Grey)
-        else -> Pill(stringResource(R.string.pill_downloading), PillTone.Purple, loading = true)
+        else -> Pill(stringResource(R.string.pill_downloading), PillTone.Green, loading = true)
     }
 }
 

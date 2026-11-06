@@ -2,27 +2,39 @@ package com.neonsheep.myreceipts.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Palette shared with gym-tracker, so the two apps look like one family.
+// The ledger look: a mint ground, deep green for money and actions, a dark card for the month.
 
-// Backgrounds
-val LavenderBackground = Color(0xFFF0EEFF)
+// Grounds and surfaces
+val Ground = Color(0xFFF6FBF5)
 val White = Color(0xFFFFFFFF)
-val LightSurface = Color(0xFFF8F6FF)
+val Soft = Color(0xFFF0F5F0)
+val Chip = Color(0xFFEBEFEA)
+val AvatarGround = Color(0xFFDBE1DC)
+val Line = Color(0xFFE1E8E2)
 
 // Brand
-val Purple = Color(0xFF6C5CE7)
-val PurpleLight = Color(0xFFEDE8FF)
-val PurpleDark = Color(0xFF5040C0)
+val Green = Color(0xFF006948)
+val GreenDark = Color(0xFF004D35)
+val GreenSoft = Color(0xFFE3F5EC)
+val GreenOnDark = Color(0xFF68DBA9)
 
 // Text
-val TextPrimary = Color(0xFF1A1035)
-val TextSecondary = Color(0xFF6B6280)
-val TextOnPurple = Color(0xFFFFFFFF)
+val Ink = Color(0xFF181D1A)
+val Muted = Color(0xFF3D4A42)
+val Faint = Color(0xFF6D7A72)
 
-// Semantic
-val SuccessGreen = Color(0xFF00B894)
-val SuccessInk = Color(0xFF007A63)
-val WarningAmber = Color(0xFFFFB74D)
-val DangerRed = Color(0xFFE5484D)
-val Outline = Color(0xFFD0C8F0)
-val Divider = Color(0xFFEDE9FA)
+// The dark month card
+val Hero = Color(0xFF2C322E)
+val HeroChip = Color(0xFF3A423D)
+val HeroTrack = Color(0xFF46504A)
+val HeroText = Color(0xFFBCCAC0)
+
+// Budget states: bars, and badges (ink on ground)
+val Amber = Color(0xFF8D4B00)
+val Red = Color(0xFFBA1A1A)
+val OkBadgeInk = Color(0xFF005236)
+val OkBadge = Color(0xFF85F8C4)
+val NearBadgeInk = Color(0xFF6E3900)
+val NearBadge = Color(0xFFFFDCC3)
+val OverBadgeInk = Color(0xFF93000A)
+val OverBadge = Color(0xFFFFDAD6)

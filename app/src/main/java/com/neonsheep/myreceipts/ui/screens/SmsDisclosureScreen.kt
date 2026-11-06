@@ -35,8 +35,8 @@ import androidx.compose.ui.unit.dp
 import com.neonsheep.myreceipts.R
 import com.neonsheep.myreceipts.ui.components.SectionCard
 import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
-import com.neonsheep.myreceipts.ui.theme.Purple
-import com.neonsheep.myreceipts.ui.theme.PurpleLight
+import com.neonsheep.myreceipts.ui.theme.Green
+import com.neonsheep.myreceipts.ui.theme.GreenSoft
 
 /**
  * What the app does with text messages, shown before Android's SMS permission prompt (Google
@@ -61,7 +61,7 @@ fun SmsDisclosureScreen(onContinue: () -> Unit, onNotNow: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
-                    modifier = Modifier.size(72.dp).background(PurpleLight, CircleShape),
+                    modifier = Modifier.size(72.dp).background(GreenSoft, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
@@ -117,7 +117,7 @@ fun SmsDisclosureScreen(onContinue: () -> Unit, onNotNow: () -> Unit) {
                     onClick = onContinue,
                     modifier = Modifier.fillMaxWidth().height(52.dp).testTag("sms_continue"),
                     shape = MaterialTheme.shapes.large,
-                    colors = ButtonDefaults.buttonColors(containerColor = Purple),
+                    colors = ButtonDefaults.buttonColors(containerColor = Green),
                 ) {
                     Text(stringResource(R.string.sms_continue), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
                 }

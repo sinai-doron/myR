@@ -54,7 +54,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import com.neonsheep.myreceipts.ui.screens.CapturedReceipt
 import com.neonsheep.myreceipts.ui.screens.ReceiptDetailScreen
-import com.neonsheep.myreceipts.ui.screens.VendorListScreen
+import com.neonsheep.myreceipts.ui.screens.HomeScreen
+import com.neonsheep.myreceipts.ui.screens.StoresScreen
+import com.neonsheep.myreceipts.ui.components.BottomBar
+import com.neonsheep.myreceipts.ui.components.Tab
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.neonsheep.myreceipts.ui.screens.VendorReceiptsScreen
 import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
 import kotlinx.coroutines.flow.map
@@ -138,8 +144,9 @@ class MainActivity : ComponentActivity() {
             val receipts by receiptsFlow.collectAsState(initial = emptyList())
             val storeCategories by storeCategoriesFlow.collectAsState(initial = emptyMap())
             val budgets by budgetsFlow.collectAsState(initial = emptyMap())
-            // The month the spending screen shows; null while it is closed.
-            var spendingMonth by remember { mutableStateOf<YearMonth?>(null) }
+            // The tab, and the month the spending tab shows.
+            var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
+            var spendingMonth by remember { mutableStateOf(YearMonth.now()) }
             // NOT_LOADED until the encrypted session has been read, so the sign-in screen doesn't flash
             val user by userFlow.collectAsState(initial = NOT_LOADED)
             var signingIn by remember { mutableStateOf(false) }
@@ -184,30 +191,6 @@ class MainActivity : ComponentActivity() {
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
                         )
                     }
-                    spendingMonth != null -> {
-                        val month = spendingMonth!!
-                        val categoryOf = { store: String ->
-                            Category.fromName(storeCategories[store]) ?: Category.guessFor(store)
-                        }
-                        SpendingScreen(
-                            spending = Spending.forMonth(
-                                month,
-                                receipts.map { Spend(it.senderLabel, it.timestamp, it.totalAmount) },
-                                categoryOf,
-                            ),
-                            budgets = budgets,
-                            isCurrentMonth = month >= YearMonth.now(),
-                            onMonth = { spendingMonth = it },
-                            onBack = { spendingMonth = null },
-                            onSetBudget = { category, limit ->
-                                if (limit == null) spendingDao.removeBudget(category)
-                                else spendingDao.setBudget(BudgetEntity(category, limit))
-                            },
-                            onSetCategory = { store, category ->
-                                spendingDao.setStoreCategory(StoreCategoryEntity(store, category.name))
-                            },
-                        )
-                    }
                     selectedVendor != null -> {
                         val vendorReceipts = receipts.filter { it.senderLabel == selectedVendor }
                         VendorReceiptsScreen(
@@ -221,23 +204,63 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     else -> {
-                        VendorListScreen(
-                            receipts = receipts,
-                            onVendorClick = { selectedVendor = it },
-                            accountEmail = signedIn.email,
-                            captureOff = !smsGranted.value,
-                            onTurnOnCapture = { disclosureOpen.value = true },
-                            monthBudget = budgets[BudgetEntity.ALL],
-                            onOpenSpending = { spendingMonth = YearMonth.now() },
-                            onAddSamples = { scope.launch { dao.insertAll(SampleReceipts.build()) } },
-                            onRemoveSamples = { scope.launch { dao.deleteSamples() } },
-                            onSignOut = {
-                                scope.launch {
-                                    auth.signOut()
-                                    GoogleIdTokens.forget(this@MainActivity)
-                                }
-                            },
-                        )
+                        val categoryOf = { store: String ->
+                            Category.fromName(storeCategories[store]) ?: Category.guessFor(store)
+                        }
+                        val spends = receipts.map { Spend(it.senderLabel, it.timestamp, it.totalAmount) }
+                        val thisMonth = Spending.forMonth(YearMonth.now(), spends, categoryOf)
+                        // Back from another tab goes home; from home, it leaves the app.
+                        BackHandler(enabled = tab != Tab.HOME) { tab = Tab.HOME }
+                        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                            val content = Modifier.weight(1f)
+                            when (tab) {
+                                Tab.HOME -> HomeScreen(
+                                    receipts = receipts,
+                                    spending = thisMonth,
+                                    budgets = budgets,
+                                    categoryOf = categoryOf,
+                                    modifier = content,
+                                    accountEmail = signedIn.email,
+                                    captureOff = !smsGranted.value,
+                                    onTurnOnCapture = { disclosureOpen.value = true },
+                                    onOpenSpending = { spendingMonth = YearMonth.now(); tab = Tab.SPENDING },
+                                    onOpenStores = { tab = Tab.STORES },
+                                    onOpenReceipt = { selectedReceiptId = it.clientId },
+                                    onAddSamples = { scope.launch { dao.insertAll(SampleReceipts.build()) } },
+                                    onRemoveSamples = { scope.launch { dao.deleteSamples() } },
+                                    onSignOut = {
+                                        scope.launch {
+                                            auth.signOut()
+                                            GoogleIdTokens.forget(this@MainActivity)
+                                        }
+                                    },
+                                )
+                                Tab.SPENDING -> SpendingScreen(
+                                    spending = Spending.forMonth(spendingMonth, spends, categoryOf),
+                                    budgets = budgets,
+                                    isCurrentMonth = spendingMonth >= YearMonth.now(),
+                                    onMonth = { spendingMonth = it },
+                                    onBack = { tab = Tab.HOME },
+                                    onSetBudget = { category, limit ->
+                                        if (limit == null) spendingDao.removeBudget(category)
+                                        else spendingDao.setBudget(BudgetEntity(category, limit))
+                                    },
+                                    onSetCategory = { store, category ->
+                                        spendingDao.setStoreCategory(StoreCategoryEntity(store, category.name))
+                                    },
+                                    modifier = content,
+                                )
+                                Tab.STORES -> StoresScreen(
+                                    receipts = receipts,
+                                    spending = thisMonth,
+                                    budgets = budgets,
+                                    categoryOf = categoryOf,
+                                    onStoreClick = { selectedVendor = it },
+                                    modifier = content,
+                                )
+                            }
+                            BottomBar(selected = tab, onSelect = { tab = it })
+                        }
                     }
                 }
             }

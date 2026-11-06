@@ -37,7 +37,7 @@ class SmsDisclosureScreenTest {
     fun receiptList_showsCaptureOffBanner_onlyWhileCaptureIsOff() {
         var turnOn = 0
         composeTestRule.setContent {
-            MyReceiptsTheme { VendorListScreen(receipts = emptyList(), captureOff = true, onTurnOnCapture = { turnOn++ }) }
+            MyReceiptsTheme { TestHome(receipts = emptyList(), captureOff = true, onTurnOnCapture = { turnOn++ }) }
         }
         composeTestRule.onNodeWithTag("capture_turn_on").performClick()
         assertEquals(1, turnOn)
@@ -46,7 +46,7 @@ class SmsDisclosureScreenTest {
     @Test
     fun receiptList_hasNoBanner_whenCaptureIsOn() {
         composeTestRule.setContent {
-            MyReceiptsTheme { VendorListScreen(receipts = emptyList(), captureOff = false) }
+            MyReceiptsTheme { TestHome(receipts = emptyList(), captureOff = false) }
         }
         composeTestRule.onNodeWithTag("capture_off").assertDoesNotExist()
     }

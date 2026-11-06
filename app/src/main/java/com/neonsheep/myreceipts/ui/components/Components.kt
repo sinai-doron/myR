@@ -35,18 +35,27 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.neonsheep.myreceipts.R
-import com.neonsheep.myreceipts.ui.theme.Purple
-import com.neonsheep.myreceipts.ui.theme.PurpleLight
-import com.neonsheep.myreceipts.ui.theme.SuccessGreen
-import com.neonsheep.myreceipts.ui.theme.SuccessInk
+import com.neonsheep.myreceipts.data.BudgetStatus
+import com.neonsheep.myreceipts.ui.theme.Chip
+import com.neonsheep.myreceipts.ui.theme.Faint
+import com.neonsheep.myreceipts.ui.theme.Green
+import com.neonsheep.myreceipts.ui.theme.GreenSoft
+import com.neonsheep.myreceipts.ui.theme.Muted
+import com.neonsheep.myreceipts.ui.theme.NearBadge
+import com.neonsheep.myreceipts.ui.theme.NearBadgeInk
+import com.neonsheep.myreceipts.ui.theme.OkBadge
+import com.neonsheep.myreceipts.ui.theme.OkBadgeInk
+import com.neonsheep.myreceipts.ui.theme.OverBadge
+import com.neonsheep.myreceipts.ui.theme.OverBadgeInk
+import com.neonsheep.myreceipts.ui.theme.Soft
 
-/** White rounded card on the lavender background: the basic building block, as in gym-tracker. */
+/** White rounded card on the mint ground: the basic building block. */
 @Composable
 fun SectionCard(modifier: Modifier = Modifier, padding: Dp = 16.dp, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surface)
             .padding(padding),
         content = content,
@@ -59,7 +68,7 @@ fun CardTitle(title: String, modifier: Modifier = Modifier, trailing: String? = 
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             title,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
@@ -73,7 +82,18 @@ fun CardTitle(title: String, modifier: Modifier = Modifier, trailing: String? = 
     }
 }
 
-/** Big number over a small caption, like the week stats in gym-tracker. */
+/** Small spaced-out heading above a group, like "BY CATEGORY". */
+@Composable
+fun SectionLabel(text: String, modifier: Modifier = Modifier, color: Color = Faint) {
+    Text(
+        text.uppercase(),
+        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.7.sp),
+        color = color,
+        modifier = modifier,
+    )
+}
+
+/** Big number over a small caption. */
 @Composable
 fun Stat(value: String, label: String, color: Color, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -82,52 +102,73 @@ fun Stat(value: String, label: String, color: Color, modifier: Modifier = Modifi
     }
 }
 
-enum class PillTone { Purple, Green, Grey }
+enum class PillTone { Brand, Green, Grey }
 
-/** Rounded chip for short facts and statuses. */
+/** Small rounded tag for a receipt's PDF state. */
 @Composable
-fun Pill(text: String, tone: PillTone = PillTone.Purple, loading: Boolean = false) {
+fun Pill(text: String, tone: PillTone = PillTone.Brand, loading: Boolean = false) {
     val (bg, ink) = when (tone) {
-        PillTone.Purple -> PurpleLight to Purple
-        PillTone.Green -> SuccessGreen.copy(alpha = 0.14f) to SuccessInk
-        PillTone.Grey -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+        PillTone.Brand, PillTone.Green -> GreenSoft to Green
+        PillTone.Grey -> Chip to Muted
     }
     Row(
         modifier = Modifier
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(6.dp))
             .background(bg)
-            .padding(horizontal = 12.dp, vertical = 5.dp),
+            .padding(horizontal = 7.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        if (loading) CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = ink)
-        Text(text, style = MaterialTheme.typography.labelLarge, color = ink)
+        if (loading) CircularProgressIndicator(modifier = Modifier.size(10.dp), strokeWidth = 1.5.dp, color = ink)
+        Text(text, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, fontSize = 11.sp), color = ink)
     }
 }
 
-/** White bar with a back arrow, used by every screen below the home screen. */
+/** A budget badge: green under, amber near, red over. Null state is a neutral chip. */
 @Composable
-fun TopBar(title: String, onBack: () -> Unit, subtitle: String? = null, leading: @Composable (() -> Unit)? = null) {
+fun Badge(text: String, state: BudgetStatus.State?, modifier: Modifier = Modifier) {
+    val (bg, ink) = when (state) {
+        BudgetStatus.State.OK -> OkBadge to OkBadgeInk
+        BudgetStatus.State.NEAR -> NearBadge to NearBadgeInk
+        BudgetStatus.State.OVER -> OverBadge to OverBadgeInk
+        null -> Chip to Muted
+    }
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall.copy(fontWeight = if (state == null) FontWeight.Normal else FontWeight.SemiBold),
+        color = ink,
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(bg)
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+    )
+}
+
+/** Bar with a back arrow, used by the screens opened from a tab. Without [onBack], a tab's own title. */
+@Composable
+fun TopBar(title: String, onBack: (() -> Unit)?, subtitle: String? = null, leading: @Composable (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .padding(start = 4.dp, end = 20.dp, top = 8.dp, bottom = 12.dp),
+            .padding(start = if (onBack != null) 4.dp else 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.back),
-                tint = MaterialTheme.colorScheme.onSurface,
-            )
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
         if (leading != null) {
             Spacer(Modifier.width(4.dp))
             leading()
         }
-        Spacer(Modifier.width(12.dp))
+        if (onBack != null || leading != null) Spacer(Modifier.width(12.dp))
         Column {
             Text(
                 title,
@@ -143,34 +184,66 @@ fun TopBar(title: String, onBack: () -> Unit, subtitle: String? = null, leading:
     }
 }
 
-/** The merchant's logo when we have one, otherwise its initial on a purple circle. */
+/** The merchant's logo when we have one, otherwise its initial in green on a soft tile. */
 @Composable
-fun MerchantLogo(senderLabel: String, size: Dp = 44.dp) {
+fun MerchantLogo(senderLabel: String, size: Dp = 42.dp) {
+    val shape = RoundedCornerShape(size * 0.29f)
     val logoResId = resolveMerchantLogo(senderLabel)
     if (logoResId != null) {
         Image(
             painter = painterResource(logoResId),
-            contentDescription = senderLabel,
+            contentDescription = null,
             modifier = Modifier
                 .size(size)
-                .clip(CircleShape),
+                .clip(shape),
         )
     } else {
         Box(
             modifier = Modifier
                 .size(size)
-                .background(Purple, CircleShape),
+                .background(Soft, shape),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = senderLabel.firstOrNull()?.uppercase() ?: "?",
+                text = storeDisplayName(senderLabel).firstOrNull()?.uppercase() ?: "?",
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = (size.value * 0.42f).sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (size.value * 0.4f).sp,
                 ),
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = Green,
             )
         }
+    }
+}
+
+/** A tile with a category's emoji, on the same soft ground as the store tiles. */
+@Composable
+fun EmojiTile(emoji: String, size: Dp = 34.dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .background(Soft, RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(emoji, fontSize = (size.value * 0.48f).sp)
+    }
+}
+
+/** The signed-in account's initial in a round badge. */
+@Composable
+fun AccountInitial(email: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(com.neonsheep.myreceipts.ui.theme.AvatarGround),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            email.firstOrNull()?.uppercase() ?: "?",
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = Green,
+        )
     }
 }
 

@@ -128,4 +128,29 @@
     <string name="category_clothing">Clothing &amp; sport</string>
     <string name="category_leisure">Leisure</string>
     <string name="category_other">Other</string>
+
+    <!-- The ledger look: home, tabs, stores -->
+    <string name="nav_home">Home</string>
+    <string name="nav_spending">Spending</string>
+    <string name="nav_stores">Stores</string>
+    <string name="spent_this_month">Spent this month</string>
+    <string name="of_budget">of %1$s</string>
+    <string name="hero_left">%1$s left</string>
+    <string name="hero_over">%1$s over</string>
+    <plurals name="days_to_go">
+        <item quantity="one">%d day to go</item>
+        <item quantity="other">%d days to go</item>
+    </plurals>
+    <string name="category_heading">By category</string>
+    <string name="budgets_link">Budgets</string>
+    <string name="tile_over">+%1$s</string>
+    <string name="percent" translatable="false">%1$d%%</string>
+    <string name="recent_receipts">Recent receipts</string>
+    <string name="all_stores">All stores</string>
+    <string name="sort_latest">Latest</string>
+    <string name="sort_most_spent">Most spent</string>
+    <string name="sort_name">A–Z</string>
+    <string name="this_month_short">this month</string>
+    <string name="percent_of_budget">%1$d%% of budget</string>
+    <string name="over_budget_badge">%1$s over budget</string>
 </resources>

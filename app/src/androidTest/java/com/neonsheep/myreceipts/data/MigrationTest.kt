@@ -43,7 +43,7 @@ class MigrationTest {
         }
 
         val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(*MIGRATIONS)
             .build() // no destructive fallback: a failing migration must fail this test
         try {
             val all = room.receiptDao().getAllOnce()
@@ -84,7 +84,7 @@ class MigrationTest {
         }
 
         val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(*MIGRATIONS)
             .build() // no destructive fallback: a failing migration must fail this test
         try {
             val dao = room.receiptDao()
@@ -132,7 +132,7 @@ class MigrationTest {
         }
 
         val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(*MIGRATIONS)
             .build() // no destructive fallback: a failing migration must fail this test
         try {
             val r = room.receiptDao().getAllOnce().single()

@@ -55,11 +55,10 @@ import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.SectionCard
 import com.neonsheep.myreceipts.ui.components.TopBar
-import com.neonsheep.myreceipts.ui.theme.DangerRed
-import com.neonsheep.myreceipts.ui.theme.Purple
-import com.neonsheep.myreceipts.ui.theme.PurpleLight
-import com.neonsheep.myreceipts.ui.theme.SuccessGreen
-import com.neonsheep.myreceipts.ui.theme.WarningAmber
+import com.neonsheep.myreceipts.ui.theme.Red
+import com.neonsheep.myreceipts.ui.theme.Green
+import com.neonsheep.myreceipts.ui.theme.Chip
+import com.neonsheep.myreceipts.ui.theme.Amber
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -76,9 +75,11 @@ fun SpendingScreen(
     budgets: Map<String, Double>,
     isCurrentMonth: Boolean,
     onMonth: (YearMonth) -> Unit,
+    /** Back to the home tab. */
     onBack: () -> Unit,
     onSetBudget: suspend (category: String, limit: Double?) -> Unit,
     onSetCategory: suspend (store: String, category: Category) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
     val scope = rememberCoroutineScope()
@@ -86,12 +87,12 @@ fun SpendingScreen(
     var editingBudget by remember { mutableStateOf<String?>(null) }
     var editingStore by remember { mutableStateOf<String?>(null) }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        TopBar(title = stringResource(R.string.spending_title), onBack = onBack)
+    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // A tab now: no back arrow; Android's back goes home.
+        TopBar(title = stringResource(R.string.spending_title), onBack = null)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -116,7 +117,7 @@ fun SpendingScreen(
                     BudgetBar(BudgetStatus(spending.total, overall), onClick = { editingBudget = BudgetEntity.ALL })
                 } else {
                     TextButton(onClick = { editingBudget = BudgetEntity.ALL }, modifier = Modifier.testTag("set_budget")) {
-                        Text(stringResource(R.string.set_monthly_budget), color = Purple)
+                        Text(stringResource(R.string.set_monthly_budget), color = Green)
                     }
                 }
                 if (spending.withoutAmount > 0) {
@@ -287,7 +288,7 @@ private fun CategoryRow(category: Category, spent: Double, limit: Double?, large
             BudgetBar(BudgetStatus(spent, limit), onClick = onClick)
         } else {
             // Without a budget: the bar compares categories with each other.
-            Bar(if (largest > 0) (spent / largest).toFloat() else 0f, Purple)
+            Bar(if (largest > 0) (spent / largest).toFloat() else 0f, Green)
         }
     }
 }
@@ -296,9 +297,9 @@ private fun CategoryRow(category: Category, spent: Double, limit: Double?, large
 @Composable
 internal fun BudgetBar(status: BudgetStatus, onClick: () -> Unit) {
     val color = when (status.state) {
-        BudgetStatus.State.OK -> SuccessGreen
-        BudgetStatus.State.NEAR -> WarningAmber
-        BudgetStatus.State.OVER -> DangerRed
+        BudgetStatus.State.OK -> Green
+        BudgetStatus.State.NEAR -> Amber
+        BudgetStatus.State.OVER -> Red
     }
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("budget_${status.state.name}")) {
         Bar(status.fraction.coerceIn(0.0, 1.0).toFloat(), color)
@@ -309,7 +310,7 @@ internal fun BudgetBar(status: BudgetStatus, onClick: () -> Unit) {
                 else -> stringResource(R.string.budget_left, formatAmount(status.left), formatAmount(status.limit))
             },
             style = MaterialTheme.typography.bodySmall,
-            color = if (status.state == BudgetStatus.State.OVER) DangerRed else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (status.state == BudgetStatus.State.OVER) Red else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -320,7 +321,7 @@ private fun Bar(fraction: Float, color: Color) {
         progress = { fraction },
         modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
         color = color,
-        trackColor = PurpleLight,
+        trackColor = Chip,
         drawStopIndicator = {},
         gapSize = 0.dp,
     )
