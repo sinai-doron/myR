@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.neonsheep.myreceipts.R
+import com.neonsheep.myreceipts.data.Category
 import com.neonsheep.myreceipts.data.TotalSource
 import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
@@ -60,7 +61,25 @@ fun ReceiptDetailScreen(
     onGetPdf: (suspend (CapturedReceipt) -> String?)? = null,
     // Saves the amount the user typed, or none.
     onSetAmount: (suspend (CapturedReceipt, Double?) -> Unit)? = null,
+    /** The category the receipt's store counts in. */
+    storeCategory: Category = Category.guessFor(receipt.senderLabel),
+    /** Saves the user's corrections and deadlines. Null: no editing (samples). */
+    onEdit: (suspend (CapturedReceipt, ReceiptEdit) -> Unit)? = null,
 ) {
+    val scopeForEdit = rememberCoroutineScope()
+    var editing by remember(receipt.clientId) { mutableStateOf(false) }
+    if (editing && onEdit != null) {
+        EditReceiptScreen(
+            receipt = receipt,
+            storeCategory = storeCategory,
+            onCancel = { editing = false },
+            onSave = { edit ->
+                editing = false
+                scopeForEdit.launch { onEdit(receipt, edit) }
+            },
+        )
+        return
+    }
     BackHandler(onBack = onBack)
     val context = LocalContext.current
     val hasPdf = receipt.hasPdf()
@@ -111,15 +130,22 @@ fun ReceiptDetailScreen(
                         )
                     }
                 }
-                if (onSetAmount != null) {
-                    TextButton(
-                        onClick = { editingAmount = true },
-                        modifier = Modifier.testTag("edit_amount"),
-                    ) {
-                        Text(
-                            stringResource(if (receipt.totalAmount == null) R.string.add_amount else R.string.change_amount),
-                            color = Green,
-                        )
+                Row {
+                    if (onSetAmount != null) {
+                        TextButton(
+                            onClick = { editingAmount = true },
+                            modifier = Modifier.testTag("edit_amount"),
+                        ) {
+                            Text(
+                                stringResource(if (receipt.totalAmount == null) R.string.add_amount else R.string.change_amount),
+                                color = Green,
+                            )
+                        }
+                    }
+                    if (onEdit != null && !receipt.isSample()) {
+                        TextButton(onClick = { editing = true }, modifier = Modifier.testTag("edit_receipt")) {
+                            Text(stringResource(R.string.edit), color = Green)
+                        }
                     }
                 }
                 amountNote(receipt)?.let { note ->
@@ -133,7 +159,18 @@ fun ReceiptDetailScreen(
             SectionCard {
                 CardTitle(stringResource(R.string.details))
                 Spacer(Modifier.height(8.dp))
-                DetailRow(stringResource(R.string.label_received), formatTimestamp(receipt.timestamp))
+                val category = Category.fromName(receipt.category) ?: storeCategory
+                DetailRow(stringResource(R.string.label_category), "${category.emoji} ${stringResource(category.labelRes)}")
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                receipt.returnBy?.let {
+                    DetailRow(stringResource(R.string.label_return), formatDay(it), tag = "detail_return")
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                receipt.warrantyUntil?.let {
+                    DetailRow(stringResource(R.string.label_warranty), formatDay(it), tag = "detail_warranty")
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                DetailRow(stringResource(R.string.label_received), formatTimestamp(receipt.textArrivedAt))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 DetailRow(stringResource(R.string.label_link), receipt.link)
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -294,12 +331,16 @@ private fun SecondaryButton(text: String, onClick: () -> Unit) {
     }
 }
 
+private fun formatDay(at: Long): String =
+    java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(at))
+
 @Composable
-private fun DetailRow(label: String, value: String) {
+private fun DetailRow(label: String, value: String, tag: String? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .padding(vertical = 10.dp)
+            .then(if (tag != null) Modifier.testTag(tag) else Modifier),
     ) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(2.dp))

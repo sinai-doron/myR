@@ -97,4 +97,28 @@ class ReceiptStoreTest {
         assertEquals(2, all.size)
         assertTrue(all[0].timestamp > all[1].timestamp)
     }
+
+    @Test
+    fun applyEdit_keepsAReadAmountUnlessChanged_andSavesTheRest() = runBlocking {
+        dao.insert(CapturedReceiptEntity(link = "https://wee.ai/r/1", senderLabel = "IKEA", timestamp = 1000L, clientId = "c-1", capturedAt = 1L))
+        dao.setPageTotal("c-1", 730.0)
+
+        dao.applyEdit("c-1", "IKEA Rishon", 500L, "LEISURE", 2000L, 3000L, amount = null, amountChanged = false)
+        val e = dao.getByClientId("c-1")!!
+        assertEquals("IKEA Rishon", e.store)
+        assertEquals(500L, e.boughtAt)
+        assertEquals("LEISURE", e.category)
+        assertEquals(2000L, e.returnBy)
+        assertEquals(3000L, e.warrantyUntil)
+        assertEquals(730.0, e.totalAmount!!, 0.001)
+        assertEquals(TotalSource.PAGE, e.totalSource)
+
+        dao.applyEdit("c-1", null, null, null, null, null, amount = 700.0, amountChanged = true)
+        val back = dao.getByClientId("c-1")!!
+        assertEquals("IKEA", back.store)
+        assertEquals(1000L, back.boughtAt)
+        assertEquals(null, back.category)
+        assertEquals(700.0, back.totalAmount!!, 0.001)
+        assertEquals(TotalSource.USER, back.totalSource)
+    }
 }

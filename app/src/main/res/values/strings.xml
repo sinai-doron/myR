@@ -153,4 +153,24 @@
     <string name="this_month_short">this month</string>
     <string name="percent_of_budget">%1$d%% of budget</string>
     <string name="over_budget_badge">%1$s over budget</string>
+    <string name="edit_receipt">Edit receipt</string>
+    <string name="edit">Edit</string>
+    <string name="label_store">Store</string>
+    <string name="label_date">Date of purchase</string>
+    <string name="label_category">Category</string>
+    <string name="category_as_store">As the store (%1$s)</string>
+    <string name="label_return">Return by</string>
+    <string name="label_warranty">Warranty</string>
+    <string name="deadline_none">None</string>
+    <string name="deadline_hint">You get a reminder a few days before.</string>
+    <string name="return_until">Return by %1$s</string>
+    <string name="warranty_until">Warranty until %1$s</string>
+    <plurals name="days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="years">
+        <item quantity="one">%d year</item>
+        <item quantity="other">%d years</item>
+    </plurals>
 </resources>

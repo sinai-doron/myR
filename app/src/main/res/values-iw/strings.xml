@@ -149,4 +149,26 @@
     <string name="this_month_short">החודש</string>
     <string name="percent_of_budget">%1$d%% מהתקציב</string>
     <string name="over_budget_badge">חריגה של %1$s</string>
+    <string name="edit_receipt">עריכת קבלה</string>
+    <string name="edit">עריכה</string>
+    <string name="label_store">חנות</string>
+    <string name="label_date">תאריך הקנייה</string>
+    <string name="label_category">קטגוריה</string>
+    <string name="category_as_store">כמו החנות (%1$s)</string>
+    <string name="label_return">החזרה עד</string>
+    <string name="label_warranty">אחריות</string>
+    <string name="deadline_none">ללא</string>
+    <string name="deadline_hint">תקבלו תזכורת כמה ימים לפני.</string>
+    <string name="return_until">החזרה עד %1$s</string>
+    <string name="warranty_until">אחריות עד %1$s</string>
+    <plurals name="days">
+        <item quantity="one">יום אחד</item>
+        <item quantity="two">יומיים</item>
+        <item quantity="other">%d ימים</item>
+    </plurals>
+    <plurals name="years">
+        <item quantity="one">שנה</item>
+        <item quantity="two">שנתיים</item>
+        <item quantity="other">%d שנים</item>
+    </plurals>
 </resources>
