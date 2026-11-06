@@ -1,5 +1,6 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -71,16 +72,14 @@ fun SmsDisclosureScreen(onContinue: () -> Unit, onNotNow: () -> Unit) {
                 }
                 Spacer(Modifier.height(14.dp))
                 Text(
-                    "Keep every receipt automatically",
+                    stringResource(R.string.sms_title),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Shops send receipts as links in text messages, and the links stop working after a " +
-                        "while. To save them for returns and warranties, My Receipts needs to read your " +
-                        "text messages.",
+                    stringResource(R.string.sms_intro),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -89,33 +88,28 @@ fun SmsDisclosureScreen(onContinue: () -> Unit, onNotNow: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Point(
                         "🔎",
-                        "What it reads",
-                        "New texts as they arrive, and once, the texts already on your phone, to find " +
-                            "receipt links from shops.",
+                        stringResource(R.string.sms_reads_title),
+                        stringResource(R.string.sms_reads_body),
                     )
                     Point(
                         "🧾",
-                        "What it keeps",
-                        "Only the receipt link, the shop's name and the time, and from the receipt itself its " +
-                            "PDF and the amount paid. The message itself is never saved.",
+                        stringResource(R.string.sms_keeps_title),
+                        stringResource(R.string.sms_keeps_body),
                     )
                     Point(
                         "🔒",
-                        "What it ignores",
-                        "Every other message: codes, banks, personal texts. They are skipped on your phone " +
-                            "and never sent anywhere.",
+                        stringResource(R.string.sms_ignores_title),
+                        stringResource(R.string.sms_ignores_body),
                     )
                     Point(
                         "☁️",
-                        "What it sends",
-                        "The receipt link, to our server, to fetch the receipt as a PDF and read the amount " +
-                            "paid from it. Nothing else from your messages.",
+                        stringResource(R.string.sms_sends_title),
+                        stringResource(R.string.sms_sends_body),
                     )
                     Point(
                         "✉️",
-                        "It never sends texts",
-                        "Android's next prompt says \"send and view\" because that is how it groups this " +
-                            "permission. My Receipts only reads.",
+                        stringResource(R.string.sms_never_sends_title),
+                        stringResource(R.string.sms_never_sends_body),
                     )
                 }
                 Spacer(Modifier.height(22.dp))
@@ -125,10 +119,10 @@ fun SmsDisclosureScreen(onContinue: () -> Unit, onNotNow: () -> Unit) {
                     shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(containerColor = Purple),
                 ) {
-                    Text("Continue", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
+                    Text(stringResource(R.string.sms_continue), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
                 }
                 TextButton(onClick = onNotNow, modifier = Modifier.testTag("sms_not_now")) {
-                    Text("Not now")
+                    Text(stringResource(R.string.sms_not_now))
                 }
             }
         }
@@ -157,17 +151,17 @@ fun CaptureOffBanner(onTurnOn: () -> Unit, modifier: Modifier = Modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Automatic capture is off",
+                    stringResource(R.string.capture_off_title),
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "New receipt texts won't be saved.",
+                    stringResource(R.string.capture_off_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = onTurnOn, modifier = Modifier.testTag("capture_turn_on")) { Text("Turn on") }
+            TextButton(onClick = onTurnOn, modifier = Modifier.testTag("capture_turn_on")) { Text(stringResource(R.string.capture_turn_on)) }
         }
     }
 }

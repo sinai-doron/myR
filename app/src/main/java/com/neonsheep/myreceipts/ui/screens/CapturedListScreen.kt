@@ -1,5 +1,6 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -128,8 +129,8 @@ fun VendorListScreen(
             }
         }
         Text(
-            if (receipts.isEmpty()) "Receipts from your SMS, in one place"
-            else "${receiptCountLabel(receipts.size)} · ${storeCountLabel(vendors.size)}",
+            if (receipts.isEmpty()) stringResource(R.string.home_subtitle_empty)
+            else stringResource(R.string.home_subtitle, receiptCountLabel(receipts.size), storeCountLabel(vendors.size)),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
@@ -154,7 +155,7 @@ fun VendorListScreen(
         } else {
             SectionCard(padding = 0.dp) {
                 CardTitle(
-                    "🧾 Stores",
+                    stringResource(R.string.stores_title),
                     trailing = vendors.size.toString(),
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 6.dp),
                 )
@@ -176,15 +177,15 @@ fun VendorListScreen(
     if (showAccount && accountEmail != null) {
         AlertDialog(
             onDismissRequest = { showAccount = false },
-            title = { Text("Signed in") },
+            title = { Text(stringResource(R.string.signed_in)) },
             text = { Text(accountEmail) },
             confirmButton = {
                 TextButton(onClick = { showAccount = false; onSignOut() }) {
-                    Text("Sign out", color = DangerRed)
+                    Text(stringResource(R.string.sign_out), color = DangerRed)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAccount = false }) { Text("Close", color = Purple) }
+                TextButton(onClick = { showAccount = false }) { Text(stringResource(R.string.close), color = Purple) }
             },
             containerColor = MaterialTheme.colorScheme.surface,
         )
@@ -222,22 +223,22 @@ private fun MonthCard(receipts: List<CapturedReceipt>, budget: Double?, onClick:
     }
     val thisMonth = remember(receipts) { receipts.filter { it.timestamp >= monthStart } }
     val spent = remember(receipts) { Math.round(thisMonth.sumOf { it.totalAmount ?: 0.0 } * 100) / 100.0 }
-    val monthName = remember { SimpleDateFormat("MMMM", Locale.getDefault()).format(Date()) }
+    val monthName = remember { SimpleDateFormat("LLLL", Locale.getDefault()).format(Date()) }
 
     SectionCard(modifier = Modifier.clickable(onClick = onClick).testTag("month_card")) {
-        CardTitle("📅 This month", trailing = monthName)
+        CardTitle(stringResource(R.string.this_month), trailing = monthName)
         Spacer(Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Stat(thisMonth.size.toString(), "receipts", Purple, Modifier.weight(1f))
-            Stat(thisMonth.map { it.senderLabel }.distinct().size.toString(), "stores", Purple, Modifier.weight(1f))
-            Stat(formatWholeAmount(spent), "spent", SuccessGreen, Modifier.weight(1f))
+            Stat(thisMonth.size.toString(), stringResource(R.string.stat_receipts), Purple, Modifier.weight(1f))
+            Stat(thisMonth.map { it.senderLabel }.distinct().size.toString(), stringResource(R.string.stat_stores), Purple, Modifier.weight(1f))
+            Stat(formatWholeAmount(spent), stringResource(R.string.stat_spent), SuccessGreen, Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
         if (budget != null) {
             BudgetBar(BudgetStatus(spent, budget), onClick = onClick)
         } else {
             Text(
-                "See spending and set a budget ›",
+                stringResource(R.string.see_spending),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Purple,
             )
@@ -252,18 +253,18 @@ private fun SamplesBanner(onRemove: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Showing sample receipts",
+                    stringResource(R.string.samples_banner_title),
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "Made-up receipts to try the app. Your real receipts appear beside them.",
+                    stringResource(R.string.samples_banner_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             TextButton(onClick = onRemove, modifier = Modifier.testTag("remove_samples")) {
-                Text("Remove", color = Purple)
+                Text(stringResource(R.string.remove), color = Purple)
             }
         }
     }
@@ -301,7 +302,7 @@ private fun EmptyState(onAddSamples: () -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
             TextButton(onClick = onAddSamples, modifier = Modifier.testTag("add_samples")) {
-                Text("Try with sample receipts", color = Purple)
+                Text(stringResource(R.string.try_samples), color = Purple)
             }
         }
     }
@@ -325,7 +326,7 @@ private fun VendorRow(vendor: VendorSummary, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                "${receiptCountLabel(vendor.receiptCount)} · ${formatDate(vendor.lastReceiptDate)}",
+                stringResource(R.string.vendor_row, receiptCountLabel(vendor.receiptCount), formatDate(vendor.lastReceiptDate)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -338,17 +339,21 @@ private fun VendorRow(vendor: VendorSummary, onClick: () -> Unit) {
     }
 }
 
-internal fun receiptCountLabel(count: Int) = if (count == 1) "1 receipt" else "$count receipts"
-private fun storeCountLabel(count: Int) = if (count == 1) "1 store" else "$count stores"
+@Composable
+internal fun receiptCountLabel(count: Int): String = pluralStringResource(R.plurals.receipt_count, count, count)
 
-private val timestampFormatter = SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault())
-private val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
+@Composable
+private fun storeCountLabel(count: Int): String = pluralStringResource(R.plurals.store_count, count, count)
+
 private val amountFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("he-IL")).apply {
     currency = Currency.getInstance("ILS")
 }
 
-internal fun formatTimestamp(epochMillis: Long): String = timestampFormatter.format(Date(epochMillis))
-internal fun formatDate(epochMillis: Long): String = dateFormatter.format(Date(epochMillis))
+// In the app's language at the time of the call, so a language change applies at once.
+internal fun formatTimestamp(epochMillis: Long): String =
+    SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(epochMillis))
+internal fun formatDate(epochMillis: Long): String =
+    SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(epochMillis))
 internal fun formatAmount(amount: Double): String = amountFormatter.format(amount)
 
 private val wholeAmountFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("he-IL")).apply {

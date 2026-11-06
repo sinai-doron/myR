@@ -75,7 +75,7 @@ fun ReceiptDetailScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        TopBar(title = "Receipt", onBack = onBack)
+        TopBar(title = stringResource(R.string.receipt_title), onBack = onBack)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -118,7 +118,7 @@ fun ReceiptDetailScreen(
                         modifier = Modifier.testTag("edit_amount"),
                     ) {
                         Text(
-                            if (receipt.totalAmount == null) "Add amount" else "Change amount",
+                            stringResource(if (receipt.totalAmount == null) R.string.add_amount else R.string.change_amount),
                             color = Purple,
                         )
                     }
@@ -132,7 +132,7 @@ fun ReceiptDetailScreen(
 
             // The record as stored on the phone
             SectionCard {
-                CardTitle("Details")
+                CardTitle(stringResource(R.string.details))
                 Spacer(Modifier.height(8.dp))
                 DetailRow(stringResource(R.string.label_received), formatTimestamp(receipt.timestamp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -152,17 +152,17 @@ fun ReceiptDetailScreen(
             }
             when {
                 receipt.isSample() -> Text(
-                    "A sample receipt, made up to try the app. It isn't a real purchase and has no PDF.",
+                    stringResource(R.string.sample_note),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag("sample_note"),
                 )
                 hasPdf -> {
-                    PrimaryButton("Open PDF") { openReceipt(context, receipt) }
+                    PrimaryButton(stringResource(R.string.open_pdf)) { openReceipt(context, receipt) }
                     SecondaryButton(stringResource(R.string.open_in_browser)) { openInBrowser(context, receipt) }
                 }
                 onGetPdf != null -> {
-                    PrimaryButton("Get PDF", loading = fetching, tag = "get_pdf", onClick = getPdf)
+                    PrimaryButton(stringResource(R.string.get_pdf), loading = fetching, tag = "get_pdf", onClick = getPdf)
                     SecondaryButton(stringResource(R.string.open_in_browser)) { openInBrowser(context, receipt) }
                 }
                 else -> PrimaryButton(stringResource(R.string.open_in_browser)) { openInBrowser(context, receipt) }
@@ -181,7 +181,7 @@ fun ReceiptDetailScreen(
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Purple)
                     } else {
                         Text(
-                            "Get PDF again",
+                            stringResource(R.string.get_pdf_again),
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                             color = Purple,
                         )
@@ -211,10 +211,11 @@ fun ReceiptDetailScreen(
 }
 
 /** Where the amount came from, when it was read rather than typed. */
+@Composable
 private fun amountNote(receipt: CapturedReceipt): String? = when {
     receipt.totalAmount == null -> null
-    receipt.totalSource == TotalSource.PAGE -> "Read from the receipt"
-    receipt.totalSource == TotalSource.PDF -> "Read from the PDF"
+    receipt.totalSource == TotalSource.PAGE -> stringResource(R.string.amount_from_page)
+    receipt.totalSource == TotalSource.PDF -> stringResource(R.string.amount_from_pdf)
     else -> null
 }
 
@@ -232,7 +233,7 @@ private fun AmountDialog(initial: Double?, onDismiss: () -> Unit, onSave: (Doubl
     val parsed = parseTypedAmount(text)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Amount paid") },
+        title = { Text(stringResource(R.string.amount_paid)) },
         text = {
             OutlinedTextField(
                 value = text,
@@ -249,9 +250,9 @@ private fun AmountDialog(initial: Double?, onDismiss: () -> Unit, onSave: (Doubl
                 onClick = { onSave(parsed.getOrNull()) },
                 enabled = parsed.isSuccess,
                 modifier = Modifier.testTag("amount_save"),
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 

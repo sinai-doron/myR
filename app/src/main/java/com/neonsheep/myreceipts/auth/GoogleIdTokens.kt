@@ -1,5 +1,6 @@
 package com.neonsheep.myreceipts.auth
 
+import com.neonsheep.myreceipts.R
 import android.app.Activity
 import android.content.Context
 import androidx.credentials.ClearCredentialStateRequest
@@ -32,15 +33,15 @@ class GoogleIdTokens(private val activity: Activity) {
         } catch (e: GetCredentialCancellationException) {
             throw SignInCancelled()
         } catch (e: NoCredentialException) {
-            throw SignInFailed("No Google account on this phone", e)
+            throw SignInFailed(activity.getString(R.string.error_no_google_account), e)
         } catch (e: GetCredentialException) {
-            throw SignInFailed("Google sign-in failed", e)
+            throw SignInFailed(activity.getString(R.string.error_google_sign_in), e)
         }
         val credential = result.credential
         if (credential !is CustomCredential ||
             credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
         ) {
-            throw SignInFailed("Unexpected credential from Google", null)
+            throw SignInFailed(activity.getString(R.string.error_unexpected_credential), null)
         }
         return GoogleIdTokenCredential.createFrom(credential.data).idToken
     }

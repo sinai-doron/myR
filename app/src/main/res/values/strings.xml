@@ -7,4 +7,125 @@
     <string name="label_received">Received</string>
     <string name="label_id">ID</string>
     <string name="back">Back</string>
+
+    <!-- Common -->
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+    <string name="remove">Remove</string>
+    <string name="delete">Delete</string>
+    <string name="details">Details</string>
+
+    <!-- SMS disclosure: must stay true of the code, and match the Play SMS declaration -->
+    <string name="sms_title">Keep every receipt automatically</string>
+    <string name="sms_intro">Shops send receipts as links in text messages, and the links stop working after a while. To save them for returns and warranties, My Receipts needs to read your text messages.</string>
+    <string name="sms_reads_title">What it reads</string>
+    <string name="sms_reads_body">New texts as they arrive, and once, the texts already on your phone, to find receipt links from shops.</string>
+    <string name="sms_keeps_title">What it keeps</string>
+    <string name="sms_keeps_body">Only the receipt link, the shop\'s name and the time, and from the receipt itself its PDF and the amount paid. The message itself is never saved.</string>
+    <string name="sms_ignores_title">What it ignores</string>
+    <string name="sms_ignores_body">Every other message: codes, banks, personal texts. They are skipped on your phone and never sent anywhere.</string>
+    <string name="sms_sends_title">What it sends</string>
+    <string name="sms_sends_body">The receipt link, to our server, to fetch the receipt as a PDF and read the amount paid from it. Nothing else from your messages.</string>
+    <string name="sms_never_sends_title">It never sends texts</string>
+    <string name="sms_never_sends_body">Android\'s next prompt says \"send and view\" because that is how it groups this permission. My Receipts only reads.</string>
+    <string name="sms_continue">Continue</string>
+    <string name="sms_not_now">Not now</string>
+    <string name="capture_off_title">Automatic capture is off</string>
+    <string name="capture_off_body">New receipt texts won\'t be saved.</string>
+    <string name="capture_turn_on">Turn on</string>
+
+    <!-- Sign-in -->
+    <string name="sign_in_subtitle">Sign in to turn your receipt texts into PDFs</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="signed_in">Signed in</string>
+    <string name="sign_out">Sign out</string>
+    <string name="error_not_allowed">This Google account isn\'t allowed to use My Receipts.</string>
+    <string name="error_network">Can\'t reach the server. Check your connection and try again.</string>
+    <string name="error_sign_in_rate_limited">Too many attempts. Try again in a minute.</string>
+    <string name="error_sign_in_failed">Sign-in failed (%1$s). Try again.</string>
+    <string name="error_no_google_account">No Google account on this phone</string>
+    <string name="error_google_sign_in">Google sign-in failed</string>
+    <string name="error_unexpected_credential">Unexpected credential from Google</string>
+
+    <!-- Home -->
+    <string name="home_subtitle_empty">Receipts from your SMS, in one place</string>
+    <string name="home_subtitle">%1$s · %2$s</string>
+    <string name="stores_title">🧾 Stores</string>
+    <string name="this_month">📅 This month</string>
+    <string name="stat_receipts">receipts</string>
+    <string name="stat_stores">stores</string>
+    <string name="stat_spent">spent</string>
+    <string name="see_spending">See spending and set a budget ›</string>
+    <string name="samples_banner_title">Showing sample receipts</string>
+    <string name="samples_banner_body">Made-up receipts to try the app. Your real receipts appear beside them.</string>
+    <string name="try_samples">Try with sample receipts</string>
+    <string name="vendor_row">%1$s · %2$s</string>
+    <plurals name="receipt_count">
+        <item quantity="one">1 receipt</item>
+        <item quantity="other">%d receipts</item>
+    </plurals>
+    <plurals name="store_count">
+        <item quantity="one">1 store</item>
+        <item quantity="other">%d stores</item>
+    </plurals>
+
+    <!-- A store's receipts -->
+    <string name="swipe_to_delete">Swipe a receipt to delete it</string>
+    <string name="pill_sample">Sample</string>
+    <string name="pill_pdf_saved">PDF saved</string>
+    <string name="pill_unsupported">Store not supported yet</string>
+    <string name="pill_gone">No longer available</string>
+    <string name="pill_failed">Couldn\'t get PDF</string>
+    <string name="pill_link_only">Link only</string>
+    <string name="pill_downloading">Downloading</string>
+
+    <!-- A receipt -->
+    <string name="receipt_title">Receipt</string>
+    <string name="add_amount">Add amount</string>
+    <string name="change_amount">Change amount</string>
+    <string name="amount_from_page">Read from the receipt</string>
+    <string name="amount_from_pdf">Read from the PDF</string>
+    <string name="amount_paid">Amount paid</string>
+    <string name="sample_note">A sample receipt, made up to try the app. It isn\'t a real purchase and has no PDF.</string>
+    <string name="open_pdf">Open PDF</string>
+    <string name="get_pdf">Get PDF</string>
+    <string name="get_pdf_again">Get PDF again</string>
+    <string name="error_signed_out">You\'ve been signed out. Sign in again.</string>
+    <string name="error_rate_limited_seconds">Too many requests. Try again in %1$d seconds.</string>
+    <string name="error_gone">The store no longer has this receipt. Links expire after a while.</string>
+    <string name="error_unsupported">This store isn\'t supported yet. You\'ll get an e-mail to add it.</string>
+    <string name="error_server_pdf">The server couldn\'t make a PDF of this receipt.</string>
+    <string name="error_pdf">Couldn\'t get the PDF.</string>
+
+    <!-- Spending and budget -->
+    <string name="spending_title">Spending</string>
+    <string name="spent">Spent</string>
+    <string name="set_monthly_budget">Set a monthly budget</string>
+    <plurals name="without_amount">
+        <item quantity="one">1 receipt this month without an amount, not counted. Open a receipt to add its amount.</item>
+        <item quantity="other">%d receipts this month without an amount, not counted. Open a receipt to add its amount.</item>
+    </plurals>
+    <string name="by_category">📊 By category</string>
+    <string name="nothing_this_month">Nothing with an amount this month yet.</string>
+    <string name="by_store">🧾 By store</string>
+    <string name="store_row">%1$s %2$s · %3$s</string>
+    <string name="monthly_budget">Monthly budget</string>
+    <string name="category_budget">%1$s budget</string>
+    <string name="store_counts_as">%1$s counts as</string>
+    <string name="previous_month">Previous month</string>
+    <string name="next_month">Next month</string>
+    <string name="budget_over">%1$s over the %2$s budget</string>
+    <string name="budget_left">%1$s left of %2$s</string>
+    <string name="budget_field">₪ a month</string>
+    <string name="budget_empty_hint">Leave it empty for no budget.</string>
+
+    <string name="category_groceries">Groceries</string>
+    <string name="category_eating_out">Eating out</string>
+    <string name="category_home">Home</string>
+    <string name="category_health">Health &amp; beauty</string>
+    <string name="category_transport">Fuel &amp; transport</string>
+    <string name="category_clothing">Clothing &amp; sport</string>
+    <string name="category_leisure">Leisure</string>
+    <string name="category_other">Other</string>
 </resources>

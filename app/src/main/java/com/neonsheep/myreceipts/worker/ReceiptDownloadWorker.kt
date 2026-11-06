@@ -1,6 +1,7 @@
 package com.neonsheep.myreceipts.worker
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -8,7 +9,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.NetworkType
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.neonsheep.myreceipts.auth.Backend
@@ -69,8 +72,15 @@ class ReceiptDownloadWorker(
             return Result.success()
         }
 
-        Log.w(TAG, "No PDF for $clientId")
-        return if (runAttemptCount < BACKEND_ATTEMPTS + 2) Result.retry() else Result.success()
+        if (runAttemptCount < BACKEND_ATTEMPTS + 2) {
+            Log.w(TAG, "No PDF for $clientId, retrying later")
+            return Result.retry()
+        }
+        // Out of tries: say so, or the receipt would show "Downloading" until it's a month old.
+        // "Get PDF" still works, and clears this once a PDF arrives.
+        dao.updatePdfStatus(clientId, PdfStatus.FAILED)
+        Log.w(TAG, "No PDF for $clientId, giving up")
+        return Result.success()
     }
 
     /** Network trouble, a busy or failing backend: worth another go. Signed out or refused: not. */
@@ -94,20 +104,36 @@ class ReceiptDownloadWorker(
         private const val KEY_CLIENT_ID = "clientId"
 
         fun enqueue(context: Context, url: String, clientId: String) {
+            WorkManager.getInstance(context)
+                .enqueueUniqueWork(workName(clientId), ExistingWorkPolicy.KEEP, request(url, clientId))
+        }
+
+        /** Stops a queued download, when the user gets the PDF themselves. */
+        fun cancel(context: Context, clientId: String) {
+            WorkManager.getInstance(context).cancelUniqueWork(workName(clientId))
+        }
+
+        private fun workName(clientId: String) = "pdf_$clientId"
+
+        internal fun request(url: String, clientId: String, sdk: Int = Build.VERSION.SDK_INT): OneTimeWorkRequest {
             val data = Data.Builder()
                 .putString(KEY_URL, url)
                 .putString(KEY_CLIENT_ID, clientId)
                 .build()
 
-            val request = OneTimeWorkRequestBuilder<ReceiptDownloadWorker>()
+            return OneTimeWorkRequestBuilder<ReceiptDownloadWorker>()
                 .setInputData(data)
                 // Nothing to do offline; and back off 30 s, 1, 2, 4, 8 min… between attempts
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+                .apply {
+                    // Run now, even when Android holds back an app that is rarely opened: ordinary
+                    // work from the SMS waited until the app was next opened, up to hours later.
+                    // Android 12+ only: before that, expedited work needs a foreground notification
+                    // (and a Play foreground-service declaration). Out of quota, it runs as ordinary work.
+                    if (sdk >= Build.VERSION_CODES.S) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                }
                 .build()
-
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork("pdf_$clientId", ExistingWorkPolicy.KEEP, request)
         }
     }
 }

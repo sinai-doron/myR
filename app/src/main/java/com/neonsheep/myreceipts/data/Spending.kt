@@ -1,19 +1,21 @@
 package com.neonsheep.myreceipts.data
 
+import com.neonsheep.myreceipts.R
+import androidx.annotation.StringRes
 import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
 
 /** What a store's receipts are counted as. Stored by [name]. */
-enum class Category(val label: String, val emoji: String) {
-    GROCERIES("Groceries", "🛒"),
-    EATING_OUT("Eating out", "☕"),
-    HOME("Home", "🏠"),
-    HEALTH("Health & beauty", "💊"),
-    TRANSPORT("Fuel & transport", "⛽"),
-    CLOTHING("Clothing & sport", "👟"),
-    LEISURE("Leisure", "🎬"),
-    OTHER("Other", "🧾"),
+enum class Category(@param:StringRes val labelRes: Int, val emoji: String) {
+    GROCERIES(R.string.category_groceries, "🛒"),
+    EATING_OUT(R.string.category_eating_out, "☕"),
+    HOME(R.string.category_home, "🏠"),
+    HEALTH(R.string.category_health, "💊"),
+    TRANSPORT(R.string.category_transport, "⛽"),
+    CLOTHING(R.string.category_clothing, "👟"),
+    LEISURE(R.string.category_leisure, "🎬"),
+    OTHER(R.string.category_other, "🧾"),
     ;
 
     companion object {

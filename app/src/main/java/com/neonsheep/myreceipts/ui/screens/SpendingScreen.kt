@@ -1,5 +1,8 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import com.neonsheep.myreceipts.R
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -84,7 +87,7 @@ fun SpendingScreen(
     var editingStore by remember { mutableStateOf<String?>(null) }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        TopBar(title = "Spending", onBack = onBack)
+        TopBar(title = stringResource(R.string.spending_title), onBack = onBack)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -98,7 +101,7 @@ fun SpendingScreen(
             // The month's total, and the whole-month budget
             SectionCard(modifier = Modifier.testTag("month_total")) {
                 Text(
-                    "Spent",
+                    stringResource(R.string.spent),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -113,13 +116,12 @@ fun SpendingScreen(
                     BudgetBar(BudgetStatus(spending.total, overall), onClick = { editingBudget = BudgetEntity.ALL })
                 } else {
                     TextButton(onClick = { editingBudget = BudgetEntity.ALL }, modifier = Modifier.testTag("set_budget")) {
-                        Text("Set a monthly budget", color = Purple)
+                        Text(stringResource(R.string.set_monthly_budget), color = Purple)
                     }
                 }
                 if (spending.withoutAmount > 0) {
                     Text(
-                        "${receiptCountLabel(spending.withoutAmount)} this month without an amount, not counted. " +
-                            "Open a receipt to add its amount.",
+                        pluralStringResource(R.plurals.without_amount, spending.withoutAmount, spending.withoutAmount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp).testTag("without_amount"),
@@ -130,13 +132,13 @@ fun SpendingScreen(
             // By category, each with its own budget if set
             SectionCard(padding = 0.dp) {
                 CardTitle(
-                    "📊 By category",
+                    stringResource(R.string.by_category),
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 6.dp),
                 )
                 val shown = Category.entries.filter { (spending.byCategory[it] ?: 0.0) > 0 || budgets.containsKey(it.name) }
                 if (shown.isEmpty()) {
                     Text(
-                        "Nothing with an amount this month yet.",
+                        stringResource(R.string.nothing_this_month),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(20.dp),
@@ -159,7 +161,7 @@ fun SpendingScreen(
             if (spending.byStore.isNotEmpty()) {
                 SectionCard(padding = 0.dp) {
                     CardTitle(
-                        "🧾 By store",
+                        stringResource(R.string.by_store),
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 6.dp),
                     )
                     spending.byStore.forEachIndexed { i, store ->
@@ -181,7 +183,7 @@ fun SpendingScreen(
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Text(
-                                    "${store.category.emoji} ${store.category.label} · ${receiptCountLabel(store.receipts)}",
+                                    stringResource(R.string.store_row, store.category.emoji, stringResource(store.category.labelRes), receiptCountLabel(store.receipts)),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -201,7 +203,8 @@ fun SpendingScreen(
 
     editingBudget?.let { key ->
         BudgetDialog(
-            title = if (key == BudgetEntity.ALL) "Monthly budget" else "${Category.fromName(key)?.label} budget",
+            title = if (key == BudgetEntity.ALL) stringResource(R.string.monthly_budget)
+            else stringResource(R.string.category_budget, stringResource(Category.fromName(key)?.labelRes ?: R.string.category_other)),
             initial = budgets[key],
             onDismiss = { editingBudget = null },
             onSave = { limit ->
@@ -214,12 +217,12 @@ fun SpendingScreen(
         val current = spending.byStore.firstOrNull { it.store == store }?.category
         AlertDialog(
             onDismissRequest = { editingStore = null },
-            title = { Text("$store counts as") },
+            title = { Text(stringResource(R.string.store_counts_as, store)) },
             text = {
                 Column {
                     Category.entries.forEach { c ->
                         Text(
-                            "${c.emoji}  ${c.label}" + if (c == current) "  ✓" else "",
+                            "${c.emoji}  ${stringResource(c.labelRes)}" + if (c == current) "  ✓" else "",
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = if (c == current) FontWeight.Bold else FontWeight.Normal,
                             ),
@@ -235,7 +238,7 @@ fun SpendingScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { editingStore = null }) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { editingStore = null }) { Text(stringResource(R.string.close)) } },
         )
     }
 }
@@ -244,10 +247,10 @@ fun SpendingScreen(
 private fun MonthPicker(month: YearMonth, isCurrentMonth: Boolean, onMonth: (YearMonth) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { onMonth(month.minusMonths(1)) }, modifier = Modifier.testTag("previous_month")) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = stringResource(R.string.previous_month))
         }
         Text(
-            month.format(MONTH_FORMAT),
+            month.format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())),
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f).testTag("month"),
@@ -258,7 +261,7 @@ private fun MonthPicker(month: YearMonth, isCurrentMonth: Boolean, onMonth: (Yea
             enabled = !isCurrentMonth,
             modifier = Modifier.testTag("next_month"),
         ) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.next_month))
         }
     }
 }
@@ -273,7 +276,7 @@ private fun CategoryRow(category: Category, spent: Double, limit: Double?, large
             .testTag("category_row_${category.name}"),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${category.emoji}  ${category.label}", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Text("${category.emoji}  ${stringResource(category.labelRes)}", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             Text(
                 formatAmount(spent),
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
@@ -302,8 +305,8 @@ internal fun BudgetBar(status: BudgetStatus, onClick: () -> Unit) {
         Spacer(Modifier.height(4.dp))
         Text(
             when (status.state) {
-                BudgetStatus.State.OVER -> "${formatAmount(-status.left)} over the ${formatAmount(status.limit)} budget"
-                else -> "${formatAmount(status.left)} left of ${formatAmount(status.limit)}"
+                BudgetStatus.State.OVER -> stringResource(R.string.budget_over, formatAmount(-status.left), formatAmount(status.limit))
+                else -> stringResource(R.string.budget_left, formatAmount(status.left), formatAmount(status.limit))
             },
             style = MaterialTheme.typography.bodySmall,
             color = if (status.state == BudgetStatus.State.OVER) DangerRed else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -335,7 +338,7 @@ private fun BudgetDialog(title: String, initial: Double?, onDismiss: () -> Unit,
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    label = { Text("₪ a month") },
+                    label = { Text(stringResource(R.string.budget_field)) },
                     singleLine = true,
                     isError = parsed.isFailure,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -343,7 +346,7 @@ private fun BudgetDialog(title: String, initial: Double?, onDismiss: () -> Unit,
                 )
                 Box(Modifier.height(4.dp))
                 Text(
-                    "Leave it empty for no budget.",
+                    stringResource(R.string.budget_empty_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -354,10 +357,9 @@ private fun BudgetDialog(title: String, initial: Double?, onDismiss: () -> Unit,
                 onClick = { onSave(parsed.getOrNull()) },
                 enabled = parsed.isSuccess,
                 modifier = Modifier.testTag("budget_save"),
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
-private val MONTH_FORMAT = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())

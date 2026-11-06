@@ -36,11 +36,15 @@ SMS arrives
        -> match: ReceiptStore (Room, unique clientId) -> enqueue ReceiptDownloadWorker (if <= 30 days old)
        -> no match: dropped, never stored
 MainActivity observes Room Flow -> CapturedListScreen (vendors) -> VendorReceiptsScreen -> ReceiptDetailScreen
-ReceiptDownloadWorker (WorkManager chain, one at a time) -> ReceiptPdfDownloader (WebView)
+ReceiptDownloadWorker (expedited on Android 12+, so it runs even when Android has put the app in a
+  low standby bucket; ordinary work waited until the app was next opened, 52 min to 2 h on the Pixel 10)
+    0. signed in: the backend makes the PDF (5 tries, ~15 min); then the phone tries itself:
+       ReceiptPdfDownloader (WebView)
     1. resolve redirects, load page, poll for a download button (e.g. button.iconDownlond)
     2. click it, intercept the file via DownloadListener / shouldInterceptRequest
     3. fallback: printToPdf of the rendered page (rejects captures shorter than 800 px as "loading page")
     -> file saved, pdfPath written to Room, UI shows a check mark
+    -> out of tries: pdfStatus = failed, so the receipt stops showing "Downloading"
 ```
 
 Key files under `app/src/main/java/com/neonsheep/myreceipts/`:
