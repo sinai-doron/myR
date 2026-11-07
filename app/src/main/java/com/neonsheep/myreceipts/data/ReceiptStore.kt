@@ -64,14 +64,20 @@ object Origin {
     /** A receipt link shared to the app (WhatsApp, email, the browser): fetched like an SMS link. */
     const val LINK = "link"
 
-    /** A PDF or photo, picked in the app or shared to it. */
+    /** A PDF, picked in the app or shared to it. */
     const val FILE = "file"
+
+    /** A photo, picked in the app or shared to it, saved as a one-page PDF. */
+    const val PHOTO = "photo"
 
     /** A paper receipt, scanned with the camera. */
     const val SCAN = "scan"
 
     /** Whether it came with a link, rather than as a file the phone already has. */
     fun hasLink(origin: String): Boolean = origin == SMS || origin == LINK
+
+    /** Whether its PDF is a picture of the paper we made or the scanner made, which may need turning the right way up. */
+    fun isPicture(origin: String): Boolean = origin == SCAN || origin == PHOTO
 }
 
 /** Where a receipt's amount came from. */

@@ -238,6 +238,7 @@ class MainActivity : ComponentActivity() {
                             onBack = { selectedReceiptId = null; editingReceiptId = null },
                             onGetPdf = { receipt -> getPdf(receipt) },
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
+                            onRotate = { receipt -> receipt.pdfPath?.let { ReceiptFiles.rotate(java.io.File(it)) } == true },
                             storeCategory = Category.fromName(storeCategories[selectedReceipt.senderLabel])
                                 ?: Category.guessFor(selectedReceipt.senderLabel),
                             onEdit = { receipt, e ->
@@ -546,4 +547,5 @@ fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     notDuplicate = notDuplicate,
     textSender = senderLabel,
     textArrivedAt = timestamp,
+    origin = origin,
 )

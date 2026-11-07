@@ -200,4 +200,6 @@
     <string name="import_no_link">There\'s no receipt link in what you shared</string>
     <string name="import_unknown_site">That link isn\'t from a receipt site we know yet</string>
     <string name="scanner_unavailable">The scanner isn\'t available on this phone</string>
+    <string name="rotate_page">Rotate</string>
+    <string name="page_preview">The receipt\'s first page</string>
 </resources>

@@ -94,6 +94,7 @@ class ReceiptFilesTest {
         val result = ReceiptFiles.importFile(context, dao, file("photo.png", png(600, 1800)), "image/png", Origin.FILE)
 
         val r = dao.getByClientId((result as ReceiptFiles.Result.Added).clientId)!!
+        assertEquals(Origin.PHOTO, r.origin)
         ParcelFileDescriptor.open(File(r.pdfPath!!), ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
             PdfRenderer(fd).use { pdf ->
                 assertEquals(1, pdf.pageCount)
@@ -143,6 +144,44 @@ class ReceiptFilesTest {
         assertEquals(ReceiptFiles.Result.AlreadySaved("sms-1"), result)
         assertEquals(1, dao.getAllOnce().size)
     }
+
+    @Test
+    fun anUpsideDownScan_turnsTheRightWayUp() = runBlocking {
+        // A tall page, dark in its top-left corner only, as the scanner might give it upside down.
+        val bitmap = Bitmap.createBitmap(300, 900, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(Color.WHITE)
+            for (x in 0 until 60) for (y in 0 until 60) setPixel(x, y, Color.BLACK)
+        }
+        val png = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+        val file = File(context.cacheDir, "turn.pdf").also { it.writeBytes(ReceiptFiles.imageToPdf(png)!!); made += it }
+
+        assertTrue(ReceiptFiles.rotate(file, quarterTurns = 1))
+        pageOf(file) { w, h, _ -> assertTrue("a quarter turn lays the page on its side", w > h) }
+
+        assertTrue(ReceiptFiles.rotate(file, quarterTurns = 1))
+        pageOf(file) { w, h, page ->
+            assertTrue(h > w)
+            // Two quarter turns: the dark corner is now bottom-right.
+            assertTrue("bottom-right is dark", luminance(page.getPixel(w - 5, h - 5)) < 80)
+            assertTrue("top-left is light", luminance(page.getPixel(5, 5)) > 200)
+        }
+    }
+
+    private fun pageOf(file: File, check: (Int, Int, Bitmap) -> Unit) {
+        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+            PdfRenderer(fd).use { pdf ->
+                assertEquals(1, pdf.pageCount)
+                pdf.openPage(0).use { page ->
+                    val bmp = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
+                    bmp.eraseColor(Color.WHITE)
+                    page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    check(page.width, page.height, bmp)
+                }
+            }
+        }
+    }
+
+    private fun luminance(c: Int) = (Color.red(c) + Color.green(c) + Color.blue(c)) / 3
 
     private fun file(name: String, bytes: ByteArray): Uri =
         Uri.fromFile(File(context.cacheDir, name).also { it.writeBytes(bytes); made += it })

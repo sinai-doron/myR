@@ -198,4 +198,6 @@
     <string name="import_no_link">אין קישור לקבלה במה ששיתפת</string>
     <string name="import_unknown_site">הקישור הזה עוד לא מאתר קבלות שאנחנו מכירים</string>
     <string name="scanner_unavailable">הסורק לא זמין בטלפון הזה</string>
+    <string name="rotate_page">סיבוב</string>
+    <string name="page_preview">העמוד הראשון של הקבלה</string>
 </resources>

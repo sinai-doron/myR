@@ -3,6 +3,7 @@ package com.neonsheep.myreceipts.ui.screens
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -62,5 +63,45 @@ class FileReceiptScreenTest {
         composeTestRule.onNodeWithTag("add_scan").assertIsDisplayed().performClick()
         composeTestRule.onNodeWithTag("add_file").assertIsDisplayed().performClick()
         assertEquals(listOf("scan", "file"), picked)
+    }
+
+    @Test
+    fun aScan_showsItsPage_andTurnsIt() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val bitmap = android.graphics.Bitmap.createBitmap(200, 600, android.graphics.Bitmap.Config.ARGB_8888)
+        val png = java.io.ByteArrayOutputStream().also { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+        val pdf = java.io.File(context.cacheDir, "screen-scan.pdf").apply {
+            writeBytes(com.neonsheep.myreceipts.data.ReceiptFiles.imageToPdf(png)!!)
+        }
+        val turned = mutableListOf<String>()
+        try {
+            composeTestRule.setContent {
+                MyReceiptsTheme {
+                    ReceiptDetailScreen(
+                        receipt = scan.copy(pdfPath = pdf.absolutePath, origin = com.neonsheep.myreceipts.data.Origin.SCAN),
+                        onBack = {},
+                        onRotate = { r -> turned += r.clientId; true },
+                    )
+                }
+            }
+            composeTestRule.waitUntil(5_000) {
+                composeTestRule.onAllNodesWithTag("page_preview").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithTag("rotate_page").performScrollTo().performClick()
+            composeTestRule.waitUntil(5_000) { turned.isNotEmpty() }
+            assertEquals(listOf(scan.clientId), turned)
+        } finally {
+            pdf.delete()
+        }
+    }
+
+    @Test
+    fun anSmsReceipt_hasNoPagePreview() {
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(receipt = scan.copy(link = "https://wee.ai/r/x", origin = com.neonsheep.myreceipts.data.Origin.SMS), onBack = {}, onRotate = { true })
+            }
+        }
+        composeTestRule.onNodeWithTag("rotate_page").assertDoesNotExist()
     }
 }

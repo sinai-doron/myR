@@ -45,6 +45,17 @@ import androidx.compose.ui.unit.dp
 import com.neonsheep.myreceipts.R
 import com.neonsheep.myreceipts.data.Category
 import com.neonsheep.myreceipts.data.TotalSource
+import com.neonsheep.myreceipts.data.Origin
+import com.neonsheep.myreceipts.data.ReceiptFiles
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import java.io.File
 import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.SectionCard
@@ -67,6 +78,8 @@ fun ReceiptDetailScreen(
     onEdit: (suspend (CapturedReceipt, ReceiptEdit) -> Unit)? = null,
     /** Opens straight on the edit screen: a file just added, whose store the user names. */
     startEditing: Boolean = false,
+    /** Turns a scan's or photo's pages a quarter turn clockwise; false when it couldn't. Null: not offered. */
+    onRotate: (suspend (CapturedReceipt) -> Boolean)? = null,
 ) {
     val scopeForEdit = rememberCoroutineScope()
     var editing by remember(receipt.clientId) { mutableStateOf(startEditing) }
@@ -160,6 +173,11 @@ fun ReceiptDetailScreen(
                 }
                 Spacer(Modifier.height(14.dp))
                 DownloadPill(receipt, hasPdf = hasPdf)
+            }
+
+            // A scan or photo: the page itself, to see it's the right way up and turn it if not.
+            if (hasPdf && Origin.isPicture(receipt.origin) && receipt.pdfPath != null) {
+                PagePreview(receipt.pdfPath, onRotate = onRotate?.let { rotate -> suspend { rotate(receipt) } })
             }
 
             // The record as stored on the phone
@@ -260,6 +278,50 @@ fun ReceiptDetailScreen(
         }
     }
 }
+
+/** The first page, drawn on the phone, with a button that turns it a quarter at a time. */
+@Composable
+private fun PagePreview(pdfPath: String, onRotate: (suspend () -> Boolean)?) {
+    val scope = rememberCoroutineScope()
+    // Bumped after each turn, so the page is drawn again from the new file.
+    var version by remember(pdfPath) { mutableIntStateOf(0) }
+    var turning by remember(pdfPath) { mutableStateOf(false) }
+    val page by produceState<ImageBitmap?>(null, pdfPath, version) {
+        value = ReceiptFiles.preview(File(pdfPath), PREVIEW_WIDTH_PX)?.asImageBitmap()
+    }
+    SectionCard {
+        Box(
+            Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 420.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            page?.let {
+                Image(
+                    it,
+                    contentDescription = stringResource(R.string.page_preview),
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxWidth().testTag("page_preview"),
+                )
+            } ?: CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = Green)
+        }
+        if (onRotate != null) {
+            TextButton(
+                onClick = {
+                    turning = true
+                    scope.launch {
+                        if (onRotate()) version++
+                        turning = false
+                    }
+                },
+                enabled = !turning,
+                modifier = Modifier.fillMaxWidth().testTag("rotate_page"),
+            ) {
+                Text("↻ " + stringResource(R.string.rotate_page), color = Green)
+            }
+        }
+    }
+}
+
+private const val PREVIEW_WIDTH_PX = 720
 
 /** Where the amount came from, when it was read rather than typed. */
 @Composable

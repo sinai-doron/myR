@@ -9,6 +9,8 @@ import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.pdf.PdfDocument
+import android.graphics.pdf.PdfRenderer
+import android.os.ParcelFileDescriptor
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
@@ -35,6 +37,9 @@ object ReceiptFiles {
 
     /** The PDF page's width in points (A4); its height follows the photo. */
     private const val PAGE_WIDTH = 595
+
+    /** Pixels per point when a page is drawn again to turn it: about 216 dpi, as sharp as the scanner's pages. */
+    private const val RENDER_SCALE = 3
 
     sealed interface Result {
         /** A new receipt. [isFile]: the user is asked for what the file can't say (store, maybe amount). */
@@ -81,6 +86,8 @@ object ReceiptFiles {
             ReceiptImport.Kind.IMAGE -> imageToPdf(bytes)
         } ?: return@withContext Result.Unreadable
 
+        // A photo is kept as one, so it can be turned the right way up later.
+        val savedAs = if (kind == ReceiptImport.Kind.IMAGE && origin == Origin.FILE) Origin.PHOTO else origin
         val clientId = ReceiptImport.fileClientId(bytes)
         dao.getByClientId(clientId)?.let { return@withContext Result.AlreadySaved(it.clientId) }
 
@@ -94,7 +101,7 @@ object ReceiptFiles {
                 timestamp = now,
                 clientId = clientId,
                 capturedAt = now,
-                origin = origin,
+                origin = savedAs,
             ),
         )
         ReceiptAmounts.pdfSaved(dao, clientId, file.absolutePath, pageTotal = null)
@@ -136,6 +143,79 @@ object ReceiptFiles {
             if (first == null) first = result
         }
         first!!
+    }
+
+    /**
+     * Turns every page of a scan or photo a quarter turn clockwise, [quarterTurns] times. The scanner guesses
+     * which way is up from how the phone is held, so a receipt shot lying on a table can come out upside down.
+     * Pages are drawn again as pictures, which they already are; nothing is read from them.
+     */
+    suspend fun rotate(file: File, quarterTurns: Int = 1): Boolean = withContext(Dispatchers.IO) {
+        val turns = ((quarterTurns % 4) + 4) % 4
+        if (turns == 0) return@withContext true
+        try {
+            val out = ByteArrayOutputStream()
+            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+                PdfRenderer(fd).use { renderer ->
+                    val doc = PdfDocument()
+                    try {
+                        for (i in 0 until renderer.pageCount) {
+                            renderer.openPage(i).use { page ->
+                                val sideways = turns % 2 == 1
+                                val w = if (sideways) page.height else page.width
+                                val h = if (sideways) page.width else page.height
+                                val scale = RENDER_SCALE
+                                val bitmap = Bitmap.createBitmap(page.width * scale, page.height * scale, Bitmap.Config.ARGB_8888)
+                                bitmap.eraseColor(Color.WHITE)
+                                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                                val out2 = doc.startPage(PdfDocument.PageInfo.Builder(w, h, i + 1).create())
+                                val canvas = out2.canvas
+                                canvas.drawColor(Color.WHITE)
+                                // Turn about the new page's centre, then draw the old page centred on it.
+                                canvas.translate(w / 2f, h / 2f)
+                                canvas.rotate(90f * turns)
+                                canvas.translate(-page.width / 2f, -page.height / 2f)
+                                canvas.drawBitmap(
+                                    bitmap, null,
+                                    Rect(0, 0, page.width, page.height),
+                                    Paint(Paint.FILTER_BITMAP_FLAG),
+                                )
+                                doc.finishPage(out2)
+                                bitmap.recycle()
+                            }
+                        }
+                        doc.writeTo(out)
+                    } finally {
+                        doc.close()
+                    }
+                }
+            }
+            writeAtomically(file, out.toByteArray())
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't turn a receipt's pages: ${e.javaClass.simpleName}")
+            false
+        }
+    }
+
+    /** The first page as a picture [widthPx] wide, to show on the receipt; null when it can't be drawn. */
+    suspend fun preview(file: File, widthPx: Int): Bitmap? = withContext(Dispatchers.IO) {
+        try {
+            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+                PdfRenderer(fd).use { renderer ->
+                    if (renderer.pageCount == 0) return@use null
+                    renderer.openPage(0).use { page ->
+                        val height = (widthPx.toLong() * page.height / page.width).toInt().coerceIn(1, widthPx * 6)
+                        Bitmap.createBitmap(widthPx, height, Bitmap.Config.ARGB_8888).also {
+                            it.eraseColor(Color.WHITE)
+                            page.render(it, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't draw a receipt's page: ${e.javaClass.simpleName}")
+            null
+        }
     }
 
     private sealed interface Read {
