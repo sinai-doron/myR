@@ -137,6 +137,24 @@ class ReceiptFilterTest {
         assertEquals("https://wee.ai/r/abc123", result.matchedLinks[0])
         assertEquals("IKEA", result.senderLabel)
     }
+
+    @Test
+    fun aromaAndSchnitt_matched_fromTheShippedList() {
+        val platformFilter = DomainMatchFilter(MerchantConfig.fromJson(java.io.File("src/main/assets/merchants.json").readText()))
+
+        val aroma = platformFilter.filter("תודה שביקרת בארומה, לקבלה: https://receipts.dorix.co.il/r/x1y2", "AROMA")
+        assertEquals(listOf("https://receipts.dorix.co.il/r/x1y2"), aroma.matchedLinks)
+        val schnitt = platformFilter.filter("הקבלה שלך משניט: https://apps.beecommcloud.com/receipt/abc", "Schnitt")
+        assertEquals(listOf("https://apps.beecommcloud.com/receipt/abc"), schnitt.matchedLinks)
+    }
+
+    @Test
+    fun maxstockHistoryPage_isNotAReceipt() {
+        val body = "MAXstock: לצפייה ברכישה https://maxstock.pairzon.com/h.html?b=12&t=eyJ0"
+        assertTrue(filter.filter(body, "MAXstock").matchedLinks.isEmpty())
+        assertFalse(ReceiptLinks.isReceipt("https://pairzon.com/H.HTML?b=1"))
+        assertTrue(ReceiptLinks.isReceipt("https://pairzon.com/r/456"))
+    }
 }
 
 class HeuristicReceiptFilterTest {

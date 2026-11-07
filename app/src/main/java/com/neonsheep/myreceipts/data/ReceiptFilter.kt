@@ -15,10 +15,18 @@ interface ReceiptFilter {
  * Links on a receipt platform that are not receipts. A wee.ai SMS often carries the receipt
  * (`/r/<id>`) next to marketing (`/s/`), unsubscribe (`/u/`) and landing links (`/l/`, `/pages/`),
  * and a marketing text from the same sender carries only those.
+ *
+ * MAXstock's texts link to a purchase history page on Pairzon (`h.html?b=…&t=…`), not a receipt:
+ * it asks for a one-time code that expires five minutes after the text, so it is never kept.
  */
 object ReceiptLinks {
     private val receiptPathPrefixes = mapOf(
         "wee.ai" to listOf("/r/"),
+    )
+
+    // Paths that are never a receipt, by domain: exact paths, any case.
+    private val notReceiptPaths = mapOf(
+        "pairzon.com" to listOf("/h.html"),
     )
 
     fun isReceipt(url: String): Boolean {
@@ -28,11 +36,15 @@ object ReceiptLinks {
             return false
         }
         val host = uri.host?.lowercase() ?: return false
+        val path = uri.rawPath.orEmpty()
+        val excluded = notReceiptPaths.entries
+            .firstOrNull { (domain, _) -> host == domain || host.endsWith(".$domain") }
+            ?.value.orEmpty()
+        if (excluded.any { path.equals(it, ignoreCase = true) }) return false
         val prefixes = receiptPathPrefixes.entries
             .firstOrNull { (domain, _) -> host == domain || host.endsWith(".$domain") }
             ?.value
             ?: return true
-        val path = uri.rawPath.orEmpty()
         return prefixes.any { path.startsWith(it) }
     }
 }
