@@ -173,4 +173,9 @@
         <item quantity="one">%d year</item>
         <item quantity="other">%d years</item>
     </plurals>
+    <string name="channel_deadlines">Return and warranty reminders</string>
+    <string name="reminder_return_title">Last days to return: %1$s</string>
+    <string name="reminder_return_text">You can return it until %1$s.</string>
+    <string name="reminder_warranty_title">Warranty ending: %1$s</string>
+    <string name="reminder_warranty_text">The warranty ends on %1$s.</string>
 </resources>
