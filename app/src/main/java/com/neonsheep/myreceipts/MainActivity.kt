@@ -77,6 +77,9 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.neonsheep.myreceipts.data.ReceiptFiles
+import com.neonsheep.myreceipts.data.ReceiptArchive
+import com.neonsheep.myreceipts.data.ReceiptBackup
+import com.neonsheep.myreceipts.ui.screens.SettingsScreen
 import com.neonsheep.myreceipts.ui.screens.AddReceiptSheet
 
 private val NOT_LOADED = Any()
@@ -98,6 +101,28 @@ class MainActivity : ComponentActivity() {
 
     // The "Add receipt" sheet.
     private val addOpen = mutableStateOf(false)
+
+    // Settings, and what the last export or import said.
+    private val settingsOpen = mutableStateOf(false)
+    private val backupStatus = mutableStateOf<String?>(null)
+    private val backupBusy = mutableStateOf(false)
+
+    private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) runBackup(R.string.export_failed) {
+            val n = ReceiptBackup.export(this, AppDatabase.getInstance(this), uri)
+            resources.getQuantityString(R.plurals.exported, n, n)
+        }
+    }
+
+    private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) runBackup(R.string.import_damaged) {
+            val r = ReceiptBackup.import(this, AppDatabase.getInstance(this), uri)
+            listOfNotNull(
+                resources.getQuantityString(R.plurals.imported, r.added, r.added),
+                r.alreadyHere.takeIf { it > 0 }?.let { resources.getQuantityString(R.plurals.imported_already, it, it) },
+            ).joinToString(". ")
+        }
+    }
 
     private val pickFileLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) importFile(uri, mimeType = null, origin = Origin.FILE)
@@ -231,6 +256,21 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                     )
+                    settingsOpen.value -> SettingsScreen(
+                        accountEmail = signedIn.email,
+                        onBack = { settingsOpen.value = false; backupStatus.value = null },
+                        onSignOut = {
+                            settingsOpen.value = false
+                            scope.launch {
+                                auth.signOut()
+                                GoogleIdTokens.forget(this@MainActivity)
+                            }
+                        },
+                        onExport = { exportLauncher.launch("my-receipts-${java.time.LocalDate.now()}.zip") },
+                        onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                        status = backupStatus.value,
+                        busy = backupBusy.value,
+                    )
                     selectedReceipt != null -> {
                         ReceiptDetailScreen(
                             receipt = selectedReceipt,
@@ -306,12 +346,7 @@ class MainActivity : ComponentActivity() {
                                     onNotSame = { group -> scope.launch { dao.markNotDuplicate(group.map { it.clientId }) } },
                                     onMerge = { group -> scope.launch { merge(group) } },
                                     onAddReceipt = { addOpen.value = true },
-                                    onSignOut = {
-                                        scope.launch {
-                                            auth.signOut()
-                                            GoogleIdTokens.forget(this@MainActivity)
-                                        }
-                                    },
+                                    onOpenSettings = { settingsOpen.value = true },
                                 )
                                 Tab.SPENDING -> SpendingScreen(
                                     spending = Spending.forMonth(spendingMonth, spends, categoryOf),
@@ -430,6 +465,31 @@ class MainActivity : ComponentActivity() {
             stream != null -> importFile(stream, intent.type, Origin.FILE)
             !text.isNullOrBlank() -> lifecycleScope.launch {
                 showImport(ReceiptFiles.importText(this@MainActivity, AppDatabase.getInstance(this@MainActivity).receiptDao(), text))
+            }
+        }
+    }
+
+    /** An export or import, one at a time, its outcome shown in Settings. */
+    private fun runBackup(failed: Int, work: suspend () -> String) {
+        backupBusy.value = true
+        backupStatus.value = null
+        lifecycleScope.launch {
+            backupStatus.value = try {
+                work()
+            } catch (e: ReceiptArchive.Unreadable) {
+                getString(
+                    when (e.reason) {
+                        ReceiptArchive.Unreadable.Reason.NOT_AN_EXPORT -> R.string.import_not_export
+                        ReceiptArchive.Unreadable.Reason.NEWER_FORMAT -> R.string.import_newer
+                        ReceiptArchive.Unreadable.Reason.DAMAGED -> R.string.import_damaged
+                    },
+                )
+            } catch (e: Exception) {
+                // Never the file's name or where it is: only that it failed.
+                android.util.Log.w("Backup", "Export or import failed: ${e.javaClass.simpleName}")
+                getString(failed)
+            } finally {
+                backupBusy.value = false
             }
         }
     }
