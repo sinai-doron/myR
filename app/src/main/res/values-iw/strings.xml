@@ -245,4 +245,16 @@
     <string name="label_invoice_number">מספר חשבונית</string>
     <string name="label_business_id">מספר עוסק / ח.פ.</string>
     <string name="label_vat">מע"מ</string>
+    <string name="label_branch">סניף</string>
+    <string name="label_address">כתובת</string>
+    <string name="label_phone">טלפון</string>
+    <string name="label_items">פריטים</string>
+    <string name="show">הצגה</string>
+    <string name="hide">הסתרה</string>
+    <string name="branch_unknown">סניף לא ידוע</string>
+    <plurals name="items_count">
+        <item quantity="one">פריט אחד</item>
+        <item quantity="two">%d פריטים</item>
+        <item quantity="other">%d פריטים</item>
+    </plurals>
 </resources>

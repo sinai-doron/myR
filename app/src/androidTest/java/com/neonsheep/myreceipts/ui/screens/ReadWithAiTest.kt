@@ -1,5 +1,8 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import androidx.compose.ui.test.performScrollTo
+import com.neonsheep.myreceipts.data.ItemUnit
+import com.neonsheep.myreceipts.data.ReceiptArchive
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsOff
@@ -77,6 +80,54 @@ class ReadWithAiTest {
         composeTestRule.waitUntil(5_000) { applied.isNotEmpty() }
         assertEquals(listOf(AiDetails(store = "Aroma", invoiceNumber = "7734-22")), applied)
         composeTestRule.onNodeWithText("You've used most of this month's AI allowance.").assertIsDisplayed()
+    }
+
+    @Test
+    fun theBranchAndItems_areOffered_andKept() {
+        val applied = mutableListOf<AiDetails>()
+        val items = listOf(
+            ReceiptArchive.Item("צלי כתף טרי", quantity = 2.126, unit = ItemUnit.KG, unitPrice = 99.9, price = 212.39, discount = 21.26),
+            ReceiptArchive.Item("מולר חלבון קפה", price = 11.9),
+        )
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(
+                    receipt = scan(),
+                    onBack = {},
+                    onReadWithAi = {
+                        AiRead.Read(AiDetails(branch = "249", storePhone = "09-8357522", items = items), emptyList())
+                    },
+                    onApplyAi = { _, d -> applied += d },
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("read_with_ai").performClick()
+        composeTestRule.onNodeWithTag("ai_confirm").performClick()
+        composeTestRule.onNodeWithText("2 items").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("ai_keep_items").assertIsOn()
+        composeTestRule.onNodeWithTag("ai_save").performClick()
+        composeTestRule.waitUntil(5_000) { applied.isNotEmpty() }
+        assertEquals(listOf(AiDetails(branch = "249", storePhone = "09-8357522", items = items)), applied)
+    }
+
+    @Test
+    fun keptItems_showFolded_untilOpened() {
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(
+                    receipt = scan().copy(branch = "249", storePhone = "09-8357522"),
+                    onBack = {},
+                    items = listOf(
+                        ReceiptArchive.Item("צלי כתף טרי", quantity = 2.126, unit = ItemUnit.KG, unitPrice = 99.9, price = 212.39, discount = 21.26),
+                    ),
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("detail_phone").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("item_row").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("items_header").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("צלי כתף טרי").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("2.126 kg × ₪99.90").performScrollTo().assertIsDisplayed()
     }
 
     @Test

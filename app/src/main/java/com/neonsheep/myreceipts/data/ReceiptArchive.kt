@@ -26,6 +26,8 @@ object ReceiptArchive {
     private const val RECEIPTS_MAX = 50_000
     private val CLIENT_ID = Regex("[A-Za-z0-9-]{1,80}")
     private val BUSINESS_ID = Regex("[0-9]{9}")
+    private val PHONE = Regex("[0-9+][0-9-]{5,19}")
+    const val ITEMS_MAX = 300
     private const val INVOICE_MAX = 40
     private val ORIGINS = setOf(Origin.SMS, Origin.LINK, Origin.FILE, Origin.PHOTO, Origin.SCAN)
 
@@ -43,6 +45,33 @@ object ReceiptArchive {
     )
 
     /** A receipt as [CapturedReceiptEntity] keeps it, without the phone's own row id and file path. */
+    /** One line of what was bought ([ReceiptItemEntity]). */
+    @Serializable
+    data class Item(
+        val name: String,
+        val code: String? = null,
+        val quantity: Double? = null,
+        val unit: String? = null,
+        val unitPrice: Double? = null,
+        val price: Double? = null,
+        val discount: Double? = null,
+    ) {
+        internal fun holdsUp(): Boolean =
+            name.length in 1..120 &&
+                (code?.length ?: 0) <= 32 &&
+                (unit == null || unit == ItemUnit.UNIT || unit == ItemUnit.KG) &&
+                listOfNotNull(quantity, unitPrice, price, discount).all { it.isFinite() && kotlin.math.abs(it) < 10_000_000 }
+
+        fun toEntity(clientId: String, position: Int) = ReceiptItemEntity(
+            receiptClientId = clientId, position = position, name = name, code = code, quantity = quantity,
+            unit = unit, unitPrice = unitPrice, price = price, discount = discount,
+        )
+
+        companion object {
+            fun of(e: ReceiptItemEntity) = Item(e.name, e.code, e.quantity, e.unit, e.unitPrice, e.price, e.discount)
+        }
+    }
+
     @Serializable
     data class Receipt(
         val clientId: String,
@@ -66,6 +95,11 @@ object ReceiptArchive {
         val invoiceNumber: String? = null,
         val businessId: String? = null,
         val vatAmount: Double? = null,
+        // Added in app DB v10.
+        val storeAddress: String? = null,
+        val storePhone: String? = null,
+        val branch: String? = null,
+        val items: List<Item> = emptyList(),
     ) {
         fun toEntity(pdfPath: String?): CapturedReceiptEntity = CapturedReceiptEntity(
             link = link, senderLabel = senderLabel, timestamp = timestamp, clientId = clientId,
@@ -75,6 +109,7 @@ object ReceiptArchive {
             totalSource = totalSource, storeName = storeName, purchasedAt = purchasedAt, category = category,
             returnBy = returnBy, warrantyUntil = warrantyUntil, notDuplicate = notDuplicate, origin = origin,
             invoiceNumber = invoiceNumber, businessId = businessId, vatAmount = vatAmount,
+            storeAddress = storeAddress, storePhone = storePhone, branch = branch,
         )
 
         companion object {
@@ -84,6 +119,7 @@ object ReceiptArchive {
                 pdfStatus = e.pdfStatus, storeName = e.storeName, purchasedAt = e.purchasedAt, category = e.category,
                 returnBy = e.returnBy, warrantyUntil = e.warrantyUntil, notDuplicate = e.notDuplicate, hasPdf = hasPdf,
                 invoiceNumber = e.invoiceNumber, businessId = e.businessId, vatAmount = e.vatAmount,
+                storeAddress = e.storeAddress, storePhone = e.storePhone, branch = e.branch,
             )
         }
     }
@@ -187,7 +223,12 @@ object ReceiptArchive {
             (r.category == null || Category.fromName(r.category) != null) &&
             (r.invoiceNumber?.length ?: 0) <= INVOICE_MAX &&
             (r.businessId == null || BUSINESS_ID.matches(r.businessId)) &&
-            (r.vatAmount == null || (r.vatAmount >= 0 && r.vatAmount < 10_000_000))
+            (r.vatAmount == null || (r.vatAmount >= 0 && r.vatAmount < 10_000_000)) &&
+            (r.storeAddress?.length ?: 0) <= 200 &&
+            (r.storePhone == null || PHONE.matches(r.storePhone)) &&
+            (r.branch?.length ?: 0) <= 60 &&
+            r.items.size <= ITEMS_MAX &&
+            r.items.all { it.holdsUp() }
 
     private fun readCapped(input: InputStream, max: Long): ByteArray? {
         val out = java.io.ByteArrayOutputStream()
