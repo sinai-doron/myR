@@ -25,6 +25,8 @@ object ReceiptArchive {
     private const val JSON_MAX_BYTES = 20L * 1024 * 1024
     private const val RECEIPTS_MAX = 50_000
     private val CLIENT_ID = Regex("[A-Za-z0-9-]{1,80}")
+    private val BUSINESS_ID = Regex("[0-9]{9}")
+    private const val INVOICE_MAX = 40
     private val ORIGINS = setOf(Origin.SMS, Origin.LINK, Origin.FILE, Origin.PHOTO, Origin.SCAN)
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -60,6 +62,10 @@ object ReceiptArchive {
         val notDuplicate: Boolean = false,
         /** Whether `pdfs/<clientId>.pdf` is in the archive. */
         val hasPdf: Boolean = false,
+        // Added in app DB v9; absent from older exports, which read as unknown.
+        val invoiceNumber: String? = null,
+        val businessId: String? = null,
+        val vatAmount: Double? = null,
     ) {
         fun toEntity(pdfPath: String?): CapturedReceiptEntity = CapturedReceiptEntity(
             link = link, senderLabel = senderLabel, timestamp = timestamp, clientId = clientId,
@@ -68,6 +74,7 @@ object ReceiptArchive {
             pdfStatus = if (pdfPath == null && hasPdf) null else pdfStatus,
             totalSource = totalSource, storeName = storeName, purchasedAt = purchasedAt, category = category,
             returnBy = returnBy, warrantyUntil = warrantyUntil, notDuplicate = notDuplicate, origin = origin,
+            invoiceNumber = invoiceNumber, businessId = businessId, vatAmount = vatAmount,
         )
 
         companion object {
@@ -76,6 +83,7 @@ object ReceiptArchive {
                 capturedAt = e.capturedAt, origin = e.origin, totalAmount = e.totalAmount, totalSource = e.totalSource,
                 pdfStatus = e.pdfStatus, storeName = e.storeName, purchasedAt = e.purchasedAt, category = e.category,
                 returnBy = e.returnBy, warrantyUntil = e.warrantyUntil, notDuplicate = e.notDuplicate, hasPdf = hasPdf,
+                invoiceNumber = e.invoiceNumber, businessId = e.businessId, vatAmount = e.vatAmount,
             )
         }
     }
@@ -176,7 +184,10 @@ object ReceiptArchive {
             r.senderLabel.length in 1..200 &&
             (r.storeName?.length ?: 0) <= 200 &&
             (r.totalAmount == null || (r.totalAmount >= 0 && r.totalAmount < 10_000_000)) &&
-            (r.category == null || Category.fromName(r.category) != null)
+            (r.category == null || Category.fromName(r.category) != null) &&
+            (r.invoiceNumber?.length ?: 0) <= INVOICE_MAX &&
+            (r.businessId == null || BUSINESS_ID.matches(r.businessId)) &&
+            (r.vatAmount == null || (r.vatAmount >= 0 && r.vatAmount < 10_000_000))
 
     private fun readCapped(input: InputStream, max: Long): ByteArray? {
         val out = java.io.ByteArrayOutputStream()

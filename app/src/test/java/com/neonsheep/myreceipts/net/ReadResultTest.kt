@@ -16,9 +16,13 @@ class ReadResultTest {
     fun `an amount in shekels on a receipt is offered`() {
         val result = read(
             """{"isReceipt":true,"store":"Aroma","date":"2026-08-15","total":20,"currency":"ILS",""" +
-                """"budget":{"usedUsd":0.0003,"limitUsd":31}}""",
+                """"invoiceNumber":"7734-21","businessId":"512345678","vat":3.05,"returnBy":null,""" +
+                """"warrantyUntil":"2027-08-15","budget":{"usedUsd":0.0003,"limitUsd":31}}""",
         )
         assertEquals(20.0, result.shekels!!, 0.0)
+        assertEquals("7734-21", result.invoiceNumber)
+        assertEquals("512345678", result.businessId)
+        assertEquals("2027-08-15", result.warrantyUntil)
         assertFalse(result.budget.nearLimit)
     }
 

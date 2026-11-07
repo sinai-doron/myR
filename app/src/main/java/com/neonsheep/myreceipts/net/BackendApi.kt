@@ -185,6 +185,11 @@ class BackendApi(
         val date: String? = null,
         val total: Double? = null,
         val currency: String? = null,
+        val invoiceNumber: String? = null,
+        val businessId: String? = null,
+        val vat: Double? = null,
+        val returnBy: String? = null,
+        val warrantyUntil: String? = null,
         val budget: AiBudget,
     ) {
         /** The amount in shekels, when it read one: another currency isn't one to record. */

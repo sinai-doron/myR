@@ -30,6 +30,9 @@ class ReceiptArchiveTest {
         storeName = "IKEA Rishon",
         category = Category.HOME.name,
         returnBy = 5_000,
+        invoiceNumber = "7734-21",
+        businessId = "512345678",
+        vatAmount = 106.07,
     )
     private val scan = ReceiptArchive.Receipt(
         clientId = "file-0123456789abcdef0123456789abcdef",
@@ -101,6 +104,9 @@ class ReceiptArchiveTest {
         assertFalse(ReceiptArchive.holdsUp(sms.copy(senderLabel = "")))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(totalAmount = -1.0)))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(category = "NOT_A_CATEGORY")))
+        assertFalse(ReceiptArchive.holdsUp(sms.copy(businessId = "51234567X")))
+        assertFalse(ReceiptArchive.holdsUp(sms.copy(invoiceNumber = "9".repeat(41))))
+        assertFalse(ReceiptArchive.holdsUp(sms.copy(vatAmount = -1.0)))
         assertTrue(ReceiptArchive.holdsUp(sms))
         assertTrue(ReceiptArchive.holdsUp(scan))
 

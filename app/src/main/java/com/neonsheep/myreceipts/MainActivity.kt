@@ -1,5 +1,8 @@
 package com.neonsheep.myreceipts
 
+import com.neonsheep.myreceipts.data.ReceiptDates
+import com.neonsheep.myreceipts.net.BackendApi
+import com.neonsheep.myreceipts.ui.screens.AiDetails
 import com.neonsheep.myreceipts.ui.screens.AiRead
 import android.Manifest
 import android.content.pm.PackageManager
@@ -291,6 +294,30 @@ class MainActivity : ComponentActivity() {
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
                             onRotate = { receipt -> receipt.pdfPath?.let { ReceiptFiles.rotate(java.io.File(it)) } == true },
                             onReadWithAi = { receipt -> readWithAi(receipt) },
+                            onApplyAi = { receipt, d ->
+                                dao.getByClientId(receipt.clientId)?.let { e ->
+                                    dao.applyEdit(
+                                        e.clientId,
+                                        storeName = d.store ?: e.storeName,
+                                        purchasedAt = d.purchasedAt ?: e.purchasedAt,
+                                        category = e.category,
+                                        returnBy = d.returnBy ?: e.returnBy,
+                                        warrantyUntil = d.warrantyUntil ?: e.warrantyUntil,
+                                        amount = d.amount,
+                                        amountChanged = d.amount != null,
+                                    )
+                                    dao.setDetails(
+                                        e.clientId,
+                                        d.invoiceNumber ?: e.invoiceNumber,
+                                        d.businessId ?: e.businessId,
+                                        d.vat ?: e.vatAmount,
+                                    )
+                                }
+                                dao.getByClientId(receipt.clientId)?.let { saved ->
+                                    DeadlineReminderWorker.schedule(this@MainActivity, saved)
+                                    if (saved.returnBy != null || saved.warrantyUntil != null) askForNotifications()
+                                }
+                            },
                             storeCategory = Category.fromName(storeCategories[selectedReceipt.senderLabel])
                                 ?: Category.guessFor(selectedReceipt.senderLabel),
                             onEdit = { receipt, e ->
@@ -561,6 +588,27 @@ class MainActivity : ComponentActivity() {
         if (!was && smsGranted.value) backfillInboxIfNeeded()
     }
 
+    /** What the AI read, in the app's terms: dates on the phone's calendar, amounts only in shekels. */
+    private fun aiDetails(receipt: CapturedReceipt, read: BackendApi.ReadResult): AiDetails {
+        val zone = java.time.ZoneId.systemDefault()
+        fun day(text: String?): java.time.LocalDate? =
+            text?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+        val shekels = read.currency == "ILS"
+        return AiDetails(
+            store = read.store?.trim()?.takeIf { it.isNotEmpty() },
+            // The day read, at the receipt's own time of day.
+            purchasedAt = day(read.date)?.let {
+                ReceiptDates.onPickedDay(receipt.timestamp, it.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(), zone)
+            },
+            amount = read.shekels,
+            invoiceNumber = read.invoiceNumber?.trim()?.takeIf { it.isNotEmpty() }?.take(40),
+            businessId = read.businessId?.takeIf { Regex("[0-9]{9}").matches(it) },
+            vat = read.vat?.takeIf { shekels && it >= 0 },
+            returnBy = day(read.returnBy)?.let { ReceiptDates.returnBy(it.atStartOfDay(zone).toInstant().toEpochMilli(), 0, zone) },
+            warrantyUntil = day(read.warrantyUntil)?.let { ReceiptDates.returnBy(it.atStartOfDay(zone).toInstant().toEpochMilli(), 0, zone) },
+        )
+    }
+
     /** Has the backend's AI read a receipt's PDF, and says what came of it on the screen. */
     private suspend fun readWithAi(receipt: CapturedReceipt): AiRead {
         val pdf = receipt.pdfPath?.let { java.io.File(it) }?.takeIf { it.isFile }
@@ -568,8 +616,8 @@ class MainActivity : ComponentActivity() {
         return Backend.readReceipt(this, pdf).fold(
             onSuccess = { read ->
                 val near = if (read.budget.nearLimit) listOf(R.string.ai_near_limit) else emptyList()
-                read.shekels?.let { AiRead.Found(it, near) }
-                    ?: AiRead.NotFound(listOf(R.string.ai_not_found) + near)
+                if (read.isReceipt) AiRead.Read(aiDetails(receipt, read), near)
+                else AiRead.NotFound(listOf(R.string.ai_not_found) + near)
             },
             onFailure = { error ->
                 AiRead.Failed(
@@ -646,4 +694,7 @@ fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     textSender = senderLabel,
     textArrivedAt = timestamp,
     origin = origin,
+    invoiceNumber = invoiceNumber,
+    businessId = businessId,
+    vatAmount = vatAmount,
 )

@@ -1,5 +1,8 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -33,19 +36,24 @@ class ReadWithAiTest {
     }
 
     @Test
-    fun nothingIsSent_untilTheUserAgrees_thenTheReadAmountIsOfferedToCheck() {
+    fun nothingIsSent_untilTheUserAgrees_thenOnlyWhatIsTickedIsSaved() {
         val reads = mutableListOf<String>()
-        val saved = mutableListOf<Double?>()
+        val applied = mutableListOf<AiDetails>()
+        val receipt = scan().copy(totalAmount = 50.0)
         composeTestRule.setContent {
             MyReceiptsTheme {
                 ReceiptDetailScreen(
-                    receipt = scan(),
+                    receipt = receipt,
                     onBack = {},
-                    onSetAmount = { _, a -> saved += a },
+                    onSetAmount = { _, _ -> },
                     onReadWithAi = { r ->
                         reads += r.clientId
-                        AiRead.Found(41.9, listOf(R.string.ai_near_limit))
+                        AiRead.Read(
+                            AiDetails(store = "Aroma", amount = 41.9, invoiceNumber = "7734-21", businessId = "512345678"),
+                            listOf(R.string.ai_near_limit),
+                        )
                     },
+                    onApplyAi = { _, d -> applied += d },
                 )
             }
         }
@@ -57,12 +65,40 @@ class ReadWithAiTest {
         composeTestRule.onNodeWithTag("read_with_ai").performClick()
         composeTestRule.onNodeWithTag("ai_confirm").performClick()
         composeTestRule.waitUntil(5_000) { reads.isNotEmpty() }
-        composeTestRule.onNodeWithTag("amount_ai_note").assertIsDisplayed()
-        composeTestRule.onNodeWithText("41.90").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("amount_save").performClick()
-        composeTestRule.waitUntil(5_000) { saved.isNotEmpty() }
-        assertEquals(listOf<Double?>(41.9), saved)
+        composeTestRule.onNodeWithText("What the AI read").assertIsDisplayed()
+        // The amount would replace one the receipt has: shown with it, and not ticked.
+        composeTestRule.onNodeWithText("Now: 50.00").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("ai_keep_amount").assertIsOff()
+        composeTestRule.onNodeWithTag("ai_keep_invoice").assertIsOn()
+        // The user corrects the invoice number and leaves out the tax ID.
+        composeTestRule.onNodeWithTag("ai_value_invoice").performTextReplacement("7734-22")
+        composeTestRule.onNodeWithTag("ai_keep_business_id").performClick()
+        composeTestRule.onNodeWithTag("ai_save").performClick()
+        composeTestRule.waitUntil(5_000) { applied.isNotEmpty() }
+        assertEquals(listOf(AiDetails(store = "Aroma", invoiceNumber = "7734-22")), applied)
         composeTestRule.onNodeWithText("You've used most of this month's AI allowance.").assertIsDisplayed()
+    }
+
+    @Test
+    fun nothingNew_isSaid_andNoDialogOpens() {
+        val receipt = scan().copy(invoiceNumber = "7734-21")
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(
+                    receipt = receipt,
+                    onBack = {},
+                    onReadWithAi = { AiRead.Read(AiDetails(invoiceNumber = "7734-21"), emptyList()) },
+                    onApplyAi = { _, _ -> },
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("read_with_ai").performClick()
+        composeTestRule.onNodeWithTag("ai_confirm").performClick()
+        composeTestRule.waitUntil(5_000) {
+            composeTestRule.onAllNodesWithTag("ai_message").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("The AI found nothing new on this receipt.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("What the AI read").assertDoesNotExist()
     }
 
     @Test
@@ -74,6 +110,7 @@ class ReadWithAiTest {
                     onBack = {},
                     onSetAmount = { _, _ -> },
                     onReadWithAi = { AiRead.Failed(listOf(R.string.ai_budget_used)) },
+                    onApplyAi = { _, _ -> },
                 )
             }
         }
@@ -86,14 +123,15 @@ class ReadWithAiTest {
     }
 
     @Test
-    fun notOffered_whenThereIsAnAmountOrNoPdf() {
+    fun notOffered_withoutAPdf() {
         composeTestRule.setContent {
             MyReceiptsTheme {
                 ReceiptDetailScreen(
-                    receipt = scan().copy(totalAmount = 10.0),
+                    receipt = scan().copy(pdfPath = null),
                     onBack = {},
                     onSetAmount = { _, _ -> },
                     onReadWithAi = { AiRead.Failed(emptyList()) },
+                    onApplyAi = { _, _ -> },
                 )
             }
         }
