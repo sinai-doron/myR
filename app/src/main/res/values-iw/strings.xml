@@ -24,7 +24,7 @@
     <string name="sms_ignores_title">מה היא מדלגת עליו</string>
     <string name="sms_ignores_body">כל הודעה אחרת: קודים, הודעות מהבנק, הודעות אישיות. מדלגים עליהן בטלפון והן לא נשלחות לשום מקום.</string>
     <string name="sms_sends_title">מה היא שולחת</string>
-    <string name="sms_sends_body">את הקישור לקבלה, לשרת שלנו, כדי להביא את הקבלה כ-PDF ולקרוא ממנה את הסכום ששולם. שום דבר אחר מההודעות שלך.</string>
+    <string name="sms_sends_body">את הקישור לקבלה, לשרת שלנו, כדי להביא את הקבלה כ-PDF ולקרוא ממנה את הסכום ששולם. שום דבר אחר מההודעות שלך. אם משהו משתבש, דיווח תקלה קצר בלי קישור או הודעה, שאפשר לכבות בהגדרות.</string>
     <string name="sms_never_sends_title">היא לעולם לא שולחת הודעות</string>
     <string name="sms_never_sends_body">בבקשה הבאה של Android כתוב \"לשלוח ולהציג\", כי כך Android מקבצת את ההרשאה הזו. My Receipts רק קוראת.</string>
     <string name="sms_continue">המשך</string>
@@ -225,4 +225,6 @@
     <string name="import_not_export">הקובץ הזה אינו ייצוא של My Receipts</string>
     <string name="import_newer">הייצוא הזה מגרסה חדשה יותר של My Receipts. עדכנו אותה ואז ייבאו.</string>
     <string name="import_damaged">לא הצלחנו לקרוא את הקובץ. ייתכן שהוא פגום.</string>
+    <string name="reports_title">שליחת דיווחי תקלות</string>
+    <string name="reports_note">כשהאפליקציה קורסת, כשאתר קבלות עוד לא נתמך או כשאי אפשר לקרוא סכום, היא מודיעה לשרת שלנו: סוג השגיאה, או שם האתר ושם השולח. אף פעם לא קישור, הודעה או סכום.</string>
 </resources>

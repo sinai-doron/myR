@@ -13,6 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +32,31 @@ import com.neonsheep.myreceipts.ui.components.SectionCard
 import com.neonsheep.myreceipts.ui.components.TopBar
 import com.neonsheep.myreceipts.ui.theme.Green
 import com.neonsheep.myreceipts.ui.theme.Red
+
+/** Whether problem reports are sent, with what they hold. */
+@Composable
+fun ReportsSetting(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    SectionCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                CardTitle(stringResource(R.string.reports_title))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.reports_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Switch(
+                checked = enabled,
+                onCheckedChange = onChange,
+                colors = SwitchDefaults.colors(checkedTrackColor = Green),
+                modifier = Modifier.testTag("reports_switch"),
+            )
+        }
+    }
+}
 
 /** The account, and moving receipts to another phone. */
 @Composable

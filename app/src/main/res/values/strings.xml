@@ -26,7 +26,7 @@
     <string name="sms_ignores_title">What it ignores</string>
     <string name="sms_ignores_body">Every other message: codes, banks, personal texts. They are skipped on your phone and never sent anywhere.</string>
     <string name="sms_sends_title">What it sends</string>
-    <string name="sms_sends_body">The receipt link, to our server, to fetch the receipt as a PDF and read the amount paid from it. Nothing else from your messages.</string>
+    <string name="sms_sends_body">The receipt link, to our server, to fetch the receipt as a PDF and read the amount paid from it. Nothing else from your messages. If something goes wrong, a short problem report with no link or message, which you can turn off in Settings.</string>
     <string name="sms_never_sends_title">It never sends texts</string>
     <string name="sms_never_sends_body">Android\'s next prompt says \"send and view\" because that is how it groups this permission. My Receipts only reads.</string>
     <string name="sms_continue">Continue</string>
@@ -224,4 +224,6 @@
     <string name="import_not_export">That file isn\'t a My Receipts export</string>
     <string name="import_newer">That export is from a newer version of My Receipts. Update the app, then import it.</string>
     <string name="import_damaged">That file couldn\'t be read. It may be damaged.</string>
+    <string name="reports_title">Send problem reports</string>
+    <string name="reports_note">When the app crashes, a receipt site isn\'t supported yet, or an amount can\'t be read, it tells our server: the kind of error, or the site\'s and sender\'s names. Never a link, a message or an amount.</string>
 </resources>

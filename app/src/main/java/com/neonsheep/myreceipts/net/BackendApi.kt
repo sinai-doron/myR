@@ -76,6 +76,11 @@ class BackendApi(
         }
     }
 
+    /** Sends a batch of failure reports, already encoded ([com.neonsheep.myreceipts.data.FailureReport.batch]). */
+    suspend fun sendReports(accessToken: String, batchJson: String) {
+        call(request("/api/receipts/reports", accessToken).post(batchJson.toRequestBody(JSON)).build()) { }
+    }
+
     private suspend inline fun <reified Req, reified Res> post(path: String, body: Req): Res {
         val request = request(path, accessToken = null)
             .post(json.encodeToString(body).toRequestBody(JSON))

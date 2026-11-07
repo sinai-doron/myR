@@ -1,6 +1,6 @@
 # My Receipts
 
-Android app that captures receipt SMS, keeps the links on the device, takes receipts added by hand (a PDF or photo, Android's Share menu, or the camera's document scanner), exports and imports them for a new phone (Settings; Android's own backup is off), downloads each receipt as a PDF, and shows them grouped by vendor. A NestJS backend (local only) can render a receipt URL to PDF and extract line items with Gemini. See `docs/HANDOVER.md` for status and `CLAUDE.md` for the short orientation.
+Android app that captures receipt SMS, keeps the links on the device, takes receipts added by hand (a PDF or photo, Android's Share menu, or the camera's document scanner), exports and imports them for a new phone (Settings; Android's own backup is off), sends short failure reports to doron-backend (crashes, unsupported receipt sites, amounts not found; never a link or message; switch in Settings), downloads each receipt as a PDF, and shows them grouped by vendor. A NestJS backend (local only) can render a receipt URL to PDF and extract line items with Gemini. See `docs/HANDOVER.md` for status and `CLAUDE.md` for the short orientation.
 
 ## Prerequisites (macOS shown; any OS works)
 
