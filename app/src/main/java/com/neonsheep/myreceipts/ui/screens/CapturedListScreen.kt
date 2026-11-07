@@ -134,7 +134,8 @@ fun HomeScreen(
     categoryOf: (String) -> Category,
     modifier: Modifier = Modifier,
     accountEmail: String? = null,
-    onSignOut: () -> Unit = {},
+    /** The account circle opens Settings: the account, sign-out, export and import. */
+    onOpenSettings: () -> Unit = {},
     captureOff: Boolean = false,
     onTurnOnCapture: () -> Unit = {},
     onOpenSpending: () -> Unit = {},
@@ -149,7 +150,6 @@ fun HomeScreen(
     /** Opens the ways to add a receipt by hand (scan, file). */
     onAddReceipt: () -> Unit = {},
 ) {
-    var showAccount by remember { mutableStateOf(false) }
     val monthName = remember { SimpleDateFormat("LLLL", Locale.getDefault()).format(Date()) }
 
     Column(
@@ -187,7 +187,7 @@ fun HomeScreen(
             if (accountEmail != null) {
                 AccountInitial(
                     accountEmail,
-                    Modifier.clickable(onClickLabel = stringResource(R.string.signed_in)) { showAccount = true }.testTag("account"),
+                    Modifier.clickable(onClickLabel = stringResource(R.string.settings), onClick = onOpenSettings).testTag("account"),
                 )
             }
         }
@@ -236,22 +236,6 @@ fun HomeScreen(
         Spacer(Modifier.height(4.dp))
     }
 
-    if (showAccount && accountEmail != null) {
-        AlertDialog(
-            onDismissRequest = { showAccount = false },
-            title = { Text(stringResource(R.string.signed_in)) },
-            text = { Text(accountEmail) },
-            confirmButton = {
-                TextButton(onClick = { showAccount = false; onSignOut() }) {
-                    Text(stringResource(R.string.sign_out), color = Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAccount = false }) { Text(stringResource(R.string.close), color = Green) }
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
-        )
-    }
 }
 
 /** The dark card: this month's spending, the budget and what's left. Tap for the spending tab. */

@@ -200,4 +200,29 @@
     <string name="scanner_unavailable">הסורק לא זמין בטלפון הזה</string>
     <string name="rotate_page">סיבוב</string>
     <string name="page_preview">העמוד הראשון של הקבלה</string>
+    <!-- Settings: the account, and moving receipts to another phone -->
+    <string name="settings">הגדרות</string>
+    <string name="move_receipts">מעבר לטלפון חדש</string>
+    <string name="move_receipts_note">הייצוא שומר את כל הקבלות, קובצי ה-PDF, הקטגוריות והתקציבים בקובץ אחד, במקום שתבחרו. ייבוא בטלפון החדש מחזיר אותם, ומשאיר את מה שכבר קיים. הקובץ לא מוצפן: כדאי לשמור אותו במקום פרטי.</string>
+    <string name="export_receipts">ייצוא קבלות</string>
+    <string name="import_receipts">ייבוא קבלות</string>
+    <plurals name="exported">
+        <item quantity="one">יוצאה קבלה אחת</item>
+        <item quantity="two">יוצאו %d קבלות</item>
+        <item quantity="other">יוצאו %d קבלות</item>
+    </plurals>
+    <plurals name="imported">
+        <item quantity="one">נוספה קבלה אחת</item>
+        <item quantity="two">נוספו %d קבלות</item>
+        <item quantity="other">נוספו %d קבלות</item>
+    </plurals>
+    <plurals name="imported_already">
+        <item quantity="one">אחת כבר הייתה כאן</item>
+        <item quantity="two">%d כבר היו כאן</item>
+        <item quantity="other">%d כבר היו כאן</item>
+    </plurals>
+    <string name="export_failed">הייצוא נכשל. נסו לשמור במקום אחר.</string>
+    <string name="import_not_export">הקובץ הזה אינו ייצוא של My Receipts</string>
+    <string name="import_newer">הייצוא הזה מגרסה חדשה יותר של My Receipts. עדכנו אותה ואז ייבאו.</string>
+    <string name="import_damaged">לא הצלחנו לקרוא את הקובץ. ייתכן שהוא פגום.</string>
 </resources>

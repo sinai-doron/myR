@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -96,17 +97,35 @@ class SignInAndPdfScreensTest {
     }
 
     @Test
-    fun home_showsAccountBadge_andSignOutAsks() {
-        var signedOut = false
+    fun home_accountBadge_opensSettings() {
+        var opened = false
         composeTestRule.setContent {
             MyReceiptsTheme {
-                TestHome(receipts = listOf(receipt), accountEmail = "doron@example.com", onSignOut = { signedOut = true })
+                TestHome(receipts = listOf(receipt), accountEmail = "doron@example.com", onOpenSettings = { opened = true })
             }
         }
 
         composeTestRule.onNodeWithTag("account").performClick()
+        assertTrue(opened)
+    }
+
+    @Test
+    fun settings_showsTheAccount_andSignsOut() {
+        var signedOut = false
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                SettingsScreen(
+                    accountEmail = "doron@example.com",
+                    onBack = {},
+                    onSignOut = { signedOut = true },
+                    onExport = {},
+                    onImport = {},
+                )
+            }
+        }
+
         composeTestRule.onNodeWithText("doron@example.com").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Sign out").performClick()
+        composeTestRule.onNodeWithTag("sign_out").performScrollTo().performClick()
         assertTrue(signedOut)
     }
 }
