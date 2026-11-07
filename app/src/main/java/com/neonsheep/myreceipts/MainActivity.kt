@@ -19,6 +19,8 @@ import com.neonsheep.myreceipts.net.BackendException
 import com.neonsheep.myreceipts.ui.screens.SignInScreen
 import com.neonsheep.myreceipts.worker.ReceiptBackfillWorker
 import com.neonsheep.myreceipts.worker.ReceiptDownloadWorker
+import com.neonsheep.myreceipts.worker.DeadlineReminderWorker
+import androidx.compose.runtime.LaunchedEffect
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -77,6 +79,14 @@ class MainActivity : ComponentActivity() {
     // Our explanation of SMS use (SmsDisclosureScreen), which always comes before Android's prompt.
     private val disclosureOpen = mutableStateOf(false)
 
+    // A receipt to open, from a tapped reminder.
+    private val openReceipt = mutableStateOf<String?>(null)
+
+    // Reminders need nothing back: once allowed, the scheduled ones show; if not, they don't.
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { }
+
     private val smsPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -99,6 +109,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
         smsGranted.value = hasSmsPermissions()
+        openReceipt.value = intent?.getStringExtra(EXTRA_RECEIPT)
         // First launch: explain before anything asks. After "Not now", the list's banner offers it.
         disclosureOpen.value = !smsGranted.value && !prefs().getBoolean(KEY_DISCLOSURE_SEEN, false)
         if (smsGranted.value) backfillInboxIfNeeded()
@@ -155,6 +166,9 @@ class MainActivity : ComponentActivity() {
             var selectedReceiptId by remember { mutableStateOf<String?>(null) }
             val selectedReceipt = receipts.firstOrNull { it.clientId == selectedReceiptId }
             val scope = rememberCoroutineScope()
+            LaunchedEffect(openReceipt.value) {
+                openReceipt.value?.let { selectedReceiptId = it; openReceipt.value = null }
+            }
             MyReceiptsTheme {
                 val signedIn = user as? SignedInUser
                 when {
@@ -196,6 +210,10 @@ class MainActivity : ComponentActivity() {
                                     receipt.clientId, e.storeName, e.purchasedAt, e.category, e.returnBy, e.warrantyUntil,
                                     amount = e.amount, amountChanged = e.amountChanged,
                                 )
+                                dao.getByClientId(receipt.clientId)?.let { saved ->
+                                    DeadlineReminderWorker.schedule(this@MainActivity, saved)
+                                    if (saved.returnBy != null || saved.warrantyUntil != null) askForNotifications()
+                                }
                             },
                         )
                     }
@@ -206,7 +224,10 @@ class MainActivity : ComponentActivity() {
                             receipts = vendorReceipts,
                             onInfoClick = { selectedReceiptId = it.clientId },
                             onDelete = { receipt ->
-                                scope.launch { dao.deleteByClientId(receipt.clientId) }
+                                scope.launch {
+                                    dao.deleteByClientId(receipt.clientId)
+                                    DeadlineReminderWorker.cancel(this@MainActivity, receipt.clientId)
+                                }
                             },
                             onBack = { selectedVendor = null },
                         )
@@ -320,6 +341,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(EXTRA_RECEIPT)?.let { openReceipt.value = it }
+    }
+
+    /** Android's notification prompt, when a deadline is set and reminders can't show yet. */
+    private fun askForNotifications() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !DeadlineReminderWorker.canNotify(this)) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         val was = smsGranted.value
@@ -358,11 +391,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
-        val SMS_PERMISSIONS = arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
-        const val PREFS = "sms_disclosure"
-        const val KEY_DISCLOSURE_SEEN = "seen"
-        const val KEY_ASKED = "asked"
+    companion object {
+        /** The receipt a reminder opens. */
+        const val EXTRA_RECEIPT = "com.neonsheep.myreceipts.RECEIPT"
+        private val SMS_PERMISSIONS = arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
+        private const val PREFS = "sms_disclosure"
+        private const val KEY_DISCLOSURE_SEEN = "seen"
+        private const val KEY_ASKED = "asked"
     }
 }
 

@@ -171,4 +171,9 @@
         <item quantity="two">שנתיים</item>
         <item quantity="other">%d שנים</item>
     </plurals>
+    <string name="channel_deadlines">תזכורות להחזרה ולאחריות</string>
+    <string name="reminder_return_title">ימים אחרונים להחזרה: %1$s</string>
+    <string name="reminder_return_text">אפשר להחזיר עד %1$s.</string>
+    <string name="reminder_warranty_title">האחריות מסתיימת: %1$s</string>
+    <string name="reminder_warranty_text">האחריות מסתיימת ב-%1$s.</string>
 </resources>
