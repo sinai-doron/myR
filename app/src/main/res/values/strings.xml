@@ -178,4 +178,8 @@
     <string name="reminder_return_text">You can return it until %1$s.</string>
     <string name="reminder_warranty_title">Warranty ending: %1$s</string>
     <string name="reminder_warranty_text">The warranty ends on %1$s.</string>
+    <string name="same_receipt_title">Same receipt?</string>
+    <string name="same_receipt_body">%1$s, %2$s, came in more than once: %3$s.</string>
+    <string name="same_receipt_no">Not the same</string>
+    <string name="same_receipt_merge">Merge</string>
 </resources>
