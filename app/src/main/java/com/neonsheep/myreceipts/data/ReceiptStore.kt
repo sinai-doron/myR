@@ -12,6 +12,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Entity(
@@ -188,6 +189,28 @@ interface ReceiptDao {
 
     @Query("UPDATE captured_receipts SET returnBy = :returnBy, warrantyUntil = :warrantyUntil WHERE clientId = :clientId")
     suspend fun setDeadlines(clientId: String, returnBy: Long?, warrantyUntil: Long?)
+
+    /**
+     * Everything the edit screen saves, at once. The amount becomes the user's only when they changed it, so
+     * opening and saving the screen never turns a read amount into a typed one.
+     */
+    @Transaction
+    suspend fun applyEdit(
+        clientId: String,
+        storeName: String?,
+        purchasedAt: Long?,
+        category: String?,
+        returnBy: Long?,
+        warrantyUntil: Long?,
+        amount: Double?,
+        amountChanged: Boolean,
+    ) {
+        setStoreName(clientId, storeName)
+        setPurchasedAt(clientId, purchasedAt)
+        setCategory(clientId, category)
+        setDeadlines(clientId, returnBy, warrantyUntil)
+        if (amountChanged) setUserTotal(clientId, amount)
+    }
 
     /** Receipts with a deadline still ahead of [now]: the reminders to schedule. */
     @Query("SELECT * FROM captured_receipts WHERE returnBy >= :now OR warrantyUntil >= :now")

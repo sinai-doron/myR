@@ -189,6 +189,14 @@ class MainActivity : ComponentActivity() {
                             onBack = { selectedReceiptId = null },
                             onGetPdf = { receipt -> getPdf(receipt) },
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
+                            storeCategory = Category.fromName(storeCategories[selectedReceipt.senderLabel])
+                                ?: Category.guessFor(selectedReceipt.senderLabel),
+                            onEdit = { receipt, e ->
+                                dao.applyEdit(
+                                    receipt.clientId, e.storeName, e.purchasedAt, e.category, e.returnBy, e.warrantyUntil,
+                                    amount = e.amount, amountChanged = e.amountChanged,
+                                )
+                            },
                         )
                     }
                     selectedVendor != null -> {
@@ -371,4 +379,6 @@ fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     returnBy = returnBy,
     warrantyUntil = warrantyUntil,
     notDuplicate = notDuplicate,
+    textSender = senderLabel,
+    textArrivedAt = timestamp,
 )

@@ -108,6 +108,10 @@ data class CapturedReceipt(
     val returnBy: Long? = null,
     val warrantyUntil: Long? = null,
     val notDuplicate: Boolean = false,
+    /** The store as the text named it, before any correction. */
+    val textSender: String = senderLabel,
+    /** When the text arrived, before any correction of the date. */
+    val textArrivedAt: Long = timestamp,
 )
 
 data class VendorSummary(
