@@ -54,6 +54,12 @@ data class CapturedReceiptEntity(
     val businessId: String? = null,
     /** The VAT included in [totalAmount], in shekels. Null: not known. */
     val vatAmount: Double? = null,
+    /** The branch's street address, as printed. Null: not known. */
+    val storeAddress: String? = null,
+    /** The store's phone number, digits and dashes. Null: not known. */
+    val storePhone: String? = null,
+    /** The branch's name or number, as printed. Null: not known. */
+    val branch: String? = null,
 ) {
     /** The store, as the user named it or as the text said. */
     val store: String get() = storeName ?: senderLabel
@@ -224,6 +230,13 @@ interface ReceiptDao {
     @Query("UPDATE captured_receipts SET category = :category WHERE clientId = :clientId")
     suspend fun setCategory(clientId: String, category: String?)
 
+    /** The branch the user confirmed: its name or number, address and phone. */
+    @Query(
+        "UPDATE captured_receipts SET branch = :branch, storeAddress = :address, storePhone = :phone " +
+            "WHERE clientId = :clientId",
+    )
+    suspend fun setBranch(clientId: String, branch: String?, address: String?, phone: String?)
+
     /** The printed details the user confirmed: invoice number, tax ID and VAT. */
     @Query(
         "UPDATE captured_receipts SET invoiceNumber = :invoiceNumber, businessId = :businessId, vatAmount = :vat " +
@@ -281,8 +294,68 @@ interface ReceiptDao {
     suspend fun withoutTotalLookedFor(): List<CapturedReceiptEntity>
 }
 
+/**
+ * One line of what a receipt says was bought, read with AI and kept by the user. Its receipt's [receiptClientId];
+ * a trigger deletes a receipt's items with it ([ITEMS_GO_WITH_RECEIPT]).
+ */
+@Entity(tableName = "receipt_items", indices = [Index(value = ["receiptClientId"])])
+data class ReceiptItemEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val receiptClientId: String,
+    /** Its place on the receipt, from 0. */
+    val position: Int,
+    val name: String,
+    /** The barcode or the store's product code. */
+    val code: String? = null,
+    val quantity: Double? = null,
+    /** [ItemUnit]: per unit, or by weight. */
+    val unit: String? = null,
+    val unitPrice: Double? = null,
+    /** The line's price before [discount]. */
+    val price: Double? = null,
+    /** The discount printed for this line, as a positive amount. */
+    val discount: Double? = null,
+)
+
+object ItemUnit {
+    const val UNIT = "unit"
+    const val KG = "kg"
+}
+
+@Dao
+interface ItemDao {
+    @Query("SELECT * FROM receipt_items WHERE receiptClientId = :clientId ORDER BY position")
+    fun itemsFor(clientId: String): Flow<List<ReceiptItemEntity>>
+
+    @Query("SELECT * FROM receipt_items WHERE receiptClientId = :clientId ORDER BY position")
+    suspend fun itemsForOnce(clientId: String): List<ReceiptItemEntity>
+
+    @Query("DELETE FROM receipt_items WHERE receiptClientId = :clientId")
+    suspend fun deleteFor(clientId: String)
+
+    @Insert
+    suspend fun insertAll(items: List<ReceiptItemEntity>)
+
+    /** A receipt's items, all at once: the old ones go. */
+    @Transaction
+    suspend fun replace(clientId: String, items: List<ReceiptItemEntity>) {
+        deleteFor(clientId)
+        insertAll(items.mapIndexed { i, item -> item.copy(id = 0, receiptClientId = clientId, position = i) })
+    }
+}
+
+/**
+ * Deletes a receipt's items whenever the receipt is deleted, by any of the DAO's delete queries. A trigger rather
+ * than a foreign key: it works whatever PRAGMA foreign_keys says, and an INSERT OR REPLACE of a receipt (none
+ * today) would not silently drop its items, as ON DELETE CASCADE would; SQLite fires no delete trigger for a
+ * REPLACE while recursive_triggers is off.
+ */
+const val ITEMS_GO_WITH_RECEIPT =
+    "CREATE TRIGGER IF NOT EXISTS receipt_items_go_with_receipt AFTER DELETE ON captured_receipts " +
+        "BEGIN DELETE FROM receipt_items WHERE receiptClientId = OLD.clientId; END"
+
 @Database(
-    entities = [CapturedReceiptEntity::class, StoreCategoryEntity::class, BudgetEntity::class],
+    entities = [CapturedReceiptEntity::class, StoreCategoryEntity::class, BudgetEntity::class, ReceiptItemEntity::class],
     version = DB_VERSION,
     exportSchema = false,
 )
@@ -290,6 +363,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun receiptDao(): ReceiptDao
 
     abstract fun spendingDao(): SpendingDao
+
+    abstract fun itemDao(): ItemDao
 
     companion object {
         @Volatile
@@ -306,6 +381,13 @@ abstract class AppDatabase : RoomDatabase() {
                     // Only the two development versions that predate real migrations may be wiped. Any later
                     // version without a migration must fail loudly in tests, never erase the owner's receipts.
                     .fallbackToDestructiveMigrationFrom(true, *WIPED_VERSIONS)
+                    .addCallback(
+                        object : Callback() {
+                            override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                                db.execSQL(ITEMS_GO_WITH_RECEIPT)
+                            }
+                        },
+                    )
                     .build()
                     .also { INSTANCE = it }
             }
@@ -314,7 +396,7 @@ abstract class AppDatabase : RoomDatabase() {
 }
 
 /** The database version. A bump needs a migration in [MIGRATIONS]. */
-const val DB_VERSION = 9
+const val DB_VERSION = 10
 
 /** Versions 1 and 2 were development builds with no migrations: the only ones an update may wipe. */
 val WIPED_VERSIONS = intArrayOf(1, 2)
@@ -324,7 +406,7 @@ val WIPED_VERSIONS = intArrayOf(1, 2)
  * doesn't reach [AppDatabase]'s version.
  */
 val MIGRATIONS: Array<androidx.room.migration.Migration>
-    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
 
 /** v4 adds pdfStatus. A real migration, so an update never wipes the owner's receipts. */
 val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
@@ -379,5 +461,21 @@ val MIGRATION_8_9 = object : androidx.room.migration.Migration(8, 9) {
         db.execSQL("ALTER TABLE captured_receipts ADD COLUMN invoiceNumber TEXT")
         db.execSQL("ALTER TABLE captured_receipts ADD COLUMN businessId TEXT")
         db.execSQL("ALTER TABLE captured_receipts ADD COLUMN vatAmount REAL")
+    }
+}
+
+/** v10 keeps the branch (address, phone, name) and the items bought, read with AI and kept by the user. */
+val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN storeAddress TEXT")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN storePhone TEXT")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN branch TEXT")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `receipt_items` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`receiptClientId` TEXT NOT NULL, `position` INTEGER NOT NULL, `name` TEXT NOT NULL, `code` TEXT, " +
+                "`quantity` REAL, `unit` TEXT, `unitPrice` REAL, `price` REAL, `discount` REAL)",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_receipt_items_receiptClientId` ON `receipt_items` (`receiptClientId`)")
+        db.execSQL(ITEMS_GO_WITH_RECEIPT)
     }
 }

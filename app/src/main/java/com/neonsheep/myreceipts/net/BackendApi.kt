@@ -177,6 +177,18 @@ class BackendApi(
         val nearLimit: Boolean get() = limitUsd > 0 && usedUsd >= limitUsd * 0.8
     }
 
+    /** One line of what was bought, as the AI read it. */
+    @Serializable
+    data class ReadItem(
+        val name: String,
+        val code: String? = null,
+        val quantity: Double? = null,
+        val unit: String? = null,
+        val unitPrice: Double? = null,
+        val price: Double? = null,
+        val discount: Double? = null,
+    )
+
     /** What the AI read from a receipt: each field null when it couldn't read it. */
     @Serializable
     data class ReadResult(
@@ -190,6 +202,10 @@ class BackendApi(
         val vat: Double? = null,
         val returnBy: String? = null,
         val warrantyUntil: String? = null,
+        val storeAddress: String? = null,
+        val storePhone: String? = null,
+        val branch: String? = null,
+        val items: List<ReadItem> = emptyList(),
         val budget: AiBudget,
     ) {
         /** The amount in shekels, when it read one: another currency isn't one to record. */

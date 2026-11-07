@@ -1,5 +1,6 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import androidx.compose.ui.platform.testTag
 import com.neonsheep.myreceipts.R
 import androidx.compose.ui.res.stringResource
 import android.content.Context
@@ -77,17 +78,32 @@ fun VendorReceiptsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
-            SectionCard(padding = 0.dp) {
-                receipts.forEachIndexed { index, receipt ->
-                    key(receipt.clientId) {
-                        if (index > 0) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                            )
-                        }
-                        SwipeToDelete(onDelete = { onDelete(receipt) }) {
-                            ReceiptRow(receipt = receipt, onInfoClick = { onInfoClick(receipt) })
+            // A chain's branches, each apart, once more than one is known (read with AI). Receipts whose branch
+            // isn't known come last, together.
+            val groups = branchGroups(receipts)
+            groups.forEachIndexed { g, group ->
+                if (groups.size > 1) {
+                    Text(
+                        group.title ?: stringResource(R.string.branch_unknown),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(top = if (g > 0) 16.dp else 0.dp, bottom = 6.dp)
+                            .testTag("branch_header"),
+                    )
+                }
+                SectionCard(padding = 0.dp) {
+                    group.receipts.forEachIndexed { index, receipt ->
+                        key(receipt.clientId) {
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 20.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+                            }
+                            SwipeToDelete(onDelete = { onDelete(receipt) }) {
+                                ReceiptRow(receipt = receipt, onInfoClick = { onInfoClick(receipt) })
+                            }
                         }
                     }
                 }
@@ -204,4 +220,36 @@ internal fun openReceipt(context: Context, receipt: CapturedReceipt) {
 internal fun openInBrowser(context: Context, receipt: CapturedReceipt) {
     if (receipt.isFile()) return
     context.startActivity(Intent(Intent.ACTION_VIEW, receipt.link.toUri()))
+}
+
+/** A branch of a store and its receipts. [title] null: receipts whose branch isn't known. */
+internal data class BranchGroup(val title: String?, val receipts: List<CapturedReceipt>)
+
+/**
+ * A store's receipts by branch, in the order each branch was last used, the unknown ones last. A branch is its
+ * name or number with its address when both are known; receipts that say only one of them are matched by it.
+ */
+internal fun branchGroups(receipts: List<CapturedReceipt>): List<BranchGroup> {
+    fun norm(s: String?) = s?.trim()?.lowercase()?.replace(Regex("\\s+"), " ")?.takeIf { it.isNotEmpty() }
+    // Each address and branch name seen together points at one key, so a later receipt with only one of them joins it.
+    val keyOf = mutableMapOf<String, String>()
+    for (r in receipts) {
+        val a = norm(r.storeAddress)
+        val b = norm(r.branch)
+        val key = (a?.let { keyOf["a:$it"] } ?: b?.let { keyOf["b:$it"] }) ?: (a ?: b) ?: continue
+        a?.let { keyOf.putIfAbsent("a:$it", key) }
+        b?.let { keyOf.putIfAbsent("b:$it", key) }
+    }
+    val groups = linkedMapOf<String?, MutableList<CapturedReceipt>>()
+    val titles = mutableMapOf<String, String>()
+    for (r in receipts) {
+        val key = norm(r.storeAddress)?.let { keyOf["a:$it"] } ?: norm(r.branch)?.let { keyOf["b:$it"] }
+        groups.getOrPut(key) { mutableListOf() } += r
+        if (key != null && key !in titles) {
+            titles[key] = listOfNotNull(r.branch?.trim(), r.storeAddress?.trim()).distinct().joinToString(" · ")
+        }
+    }
+    val known = groups.filterKeys { it != null }.map { (k, v) -> BranchGroup(titles[k], v) }
+    val unknown = groups[null]?.let { listOf(BranchGroup(null, it)) } ?: emptyList()
+    return if (known.isEmpty()) unknown else known + unknown
 }

@@ -244,4 +244,15 @@
     <string name="label_invoice_number">Invoice number</string>
     <string name="label_business_id">Business tax ID</string>
     <string name="label_vat">VAT</string>
+    <string name="label_branch">Branch</string>
+    <string name="label_address">Address</string>
+    <string name="label_phone">Phone</string>
+    <string name="label_items">Items</string>
+    <string name="show">Show</string>
+    <string name="hide">Hide</string>
+    <string name="branch_unknown">Branch not known</string>
+    <plurals name="items_count">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
 </resources>

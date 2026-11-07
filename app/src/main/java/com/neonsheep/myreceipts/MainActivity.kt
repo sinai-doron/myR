@@ -1,5 +1,6 @@
 package com.neonsheep.myreceipts
 
+import kotlinx.coroutines.flow.flowOf
 import com.neonsheep.myreceipts.data.ReceiptDates
 import com.neonsheep.myreceipts.net.BackendApi
 import com.neonsheep.myreceipts.ui.screens.AiDetails
@@ -228,6 +229,12 @@ class MainActivity : ComponentActivity() {
             var selectedVendor by remember { mutableStateOf<String?>(null) }
             var selectedReceiptId by remember { mutableStateOf<String?>(null) }
             val selectedReceipt = receipts.firstOrNull { it.clientId == selectedReceiptId }
+            val selectedItems by remember(selectedReceiptId) {
+                selectedReceiptId?.let { id ->
+                    AppDatabase.getInstance(this@MainActivity).itemDao().itemsFor(id)
+                        .map { list -> list.map(ReceiptArchive.Item::of) }
+                } ?: flowOf(emptyList())
+            }.collectAsState(initial = emptyList())
             val scope = rememberCoroutineScope()
             var editingReceiptId by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(openReceipt.value) {
@@ -294,6 +301,7 @@ class MainActivity : ComponentActivity() {
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
                             onRotate = { receipt -> receipt.pdfPath?.let { ReceiptFiles.rotate(java.io.File(it)) } == true },
                             onReadWithAi = { receipt -> readWithAi(receipt) },
+                            items = selectedItems,
                             onApplyAi = { receipt, d ->
                                 dao.getByClientId(receipt.clientId)?.let { e ->
                                     dao.applyEdit(
@@ -312,6 +320,18 @@ class MainActivity : ComponentActivity() {
                                         d.businessId ?: e.businessId,
                                         d.vat ?: e.vatAmount,
                                     )
+                                    dao.setBranch(
+                                        e.clientId,
+                                        d.branch ?: e.branch,
+                                        d.storeAddress ?: e.storeAddress,
+                                        d.storePhone ?: e.storePhone,
+                                    )
+                                    if (d.items.isNotEmpty()) {
+                                        AppDatabase.getInstance(this@MainActivity).itemDao().replace(
+                                            e.clientId,
+                                            d.items.mapIndexed { i, item -> item.toEntity(e.clientId, i) },
+                                        )
+                                    }
                                 }
                                 dao.getByClientId(receipt.clientId)?.let { saved ->
                                     DeadlineReminderWorker.schedule(this@MainActivity, saved)
@@ -606,6 +626,14 @@ class MainActivity : ComponentActivity() {
             vat = read.vat?.takeIf { shekels && it >= 0 },
             returnBy = day(read.returnBy)?.let { ReceiptDates.returnBy(it.atStartOfDay(zone).toInstant().toEpochMilli(), 0, zone) },
             warrantyUntil = day(read.warrantyUntil)?.let { ReceiptDates.returnBy(it.atStartOfDay(zone).toInstant().toEpochMilli(), 0, zone) },
+            storeAddress = read.storeAddress?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.take(200),
+            storePhone = read.storePhone?.takeIf { Regex("[0-9+][0-9-]{5,19}").matches(it) },
+            branch = read.branch?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.take(60),
+            // Items as read, minus any that wouldn't survive an export.
+            items = read.items
+                .map { ReceiptArchive.Item(it.name.trim().take(120), it.code?.take(32), it.quantity, it.unit, it.unitPrice, it.price, it.discount) }
+                .filter { it.name.isNotEmpty() && it.holdsUp() }
+                .take(ReceiptArchive.ITEMS_MAX),
         )
     }
 
@@ -697,4 +725,7 @@ fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     invoiceNumber = invoiceNumber,
     businessId = businessId,
     vatAmount = vatAmount,
+    storeAddress = storeAddress,
+    storePhone = storePhone,
+    branch = branch,
 )

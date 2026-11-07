@@ -27,7 +27,10 @@ object ReceiptBackup {
             val receipts = db.receiptDao().getAllOnce().filterNot { SampleReceipts.isSample(it.clientId) }
             val contents = ReceiptArchive.Contents(
                 exportedAt = now,
-                receipts = receipts.map { ReceiptArchive.Receipt.of(it, hasPdf = false) },
+                receipts = receipts.map { r ->
+                    ReceiptArchive.Receipt.of(r, hasPdf = false)
+                        .copy(items = db.itemDao().itemsForOnce(r.clientId).map(ReceiptArchive.Item::of))
+                },
                 storeCategories = db.spendingDao().storeCategories().first().associate { it.senderLabel to it.category },
                 budgets = db.spendingDao().budgets().first().associate { it.category to it.monthlyLimit },
             )
@@ -72,6 +75,9 @@ object ReceiptBackup {
             }
             if (dao.insert(r.toEntity(pdfPath)) != -1L) {
                 added++
+                if (r.items.isNotEmpty()) {
+                    db.itemDao().replace(r.clientId, r.items.mapIndexed { i, item -> item.toEntity(r.clientId, i) })
+                }
                 dao.getByClientId(r.clientId)?.let { DeadlineReminderWorker.schedule(context, it) }
             }
         }

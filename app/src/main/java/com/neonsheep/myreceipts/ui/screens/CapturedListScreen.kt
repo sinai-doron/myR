@@ -119,6 +119,9 @@ data class CapturedReceipt(
     val invoiceNumber: String? = null,
     val businessId: String? = null,
     val vatAmount: Double? = null,
+    val storeAddress: String? = null,
+    val storePhone: String? = null,
+    val branch: String? = null,
 )
 
 data class VendorSummary(

@@ -33,6 +33,13 @@ class ReceiptArchiveTest {
         invoiceNumber = "7734-21",
         businessId = "512345678",
         vatAmount = 106.07,
+        storeAddress = "גיבורי ישראל 5, נתניה",
+        storePhone = "09-8357522",
+        branch = "249",
+        items = listOf(
+            ReceiptArchive.Item("צלי כתף טרי", code = "9393194", quantity = 2.126, unit = ItemUnit.KG, unitPrice = 99.9, price = 212.39, discount = 21.26),
+            ReceiptArchive.Item("מולר חלבון קפה", price = 11.9),
+        ),
     )
     private val scan = ReceiptArchive.Receipt(
         clientId = "file-0123456789abcdef0123456789abcdef",
@@ -107,6 +114,10 @@ class ReceiptArchiveTest {
         assertFalse(ReceiptArchive.holdsUp(sms.copy(businessId = "51234567X")))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(invoiceNumber = "9".repeat(41))))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(vatAmount = -1.0)))
+        assertFalse(ReceiptArchive.holdsUp(sms.copy(storePhone = "call us")))
+        assertFalse(ReceiptArchive.holdsUp(sms.copy(items = listOf(ReceiptArchive.Item("")))))
+        assertFalse(ReceiptArchive.holdsUp(sms.copy(items = listOf(ReceiptArchive.Item("x", unit = "box")))))
+        assertFalse(ReceiptArchive.holdsUp(sms.copy(items = List(301) { ReceiptArchive.Item("x") })))
         assertTrue(ReceiptArchive.holdsUp(sms))
         assertTrue(ReceiptArchive.holdsUp(scan))
 

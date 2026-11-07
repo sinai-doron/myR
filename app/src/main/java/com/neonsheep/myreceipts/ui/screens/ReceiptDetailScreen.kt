@@ -1,5 +1,8 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import com.neonsheep.myreceipts.data.ItemUnit
+import com.neonsheep.myreceipts.data.ReceiptArchive
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.material3.Checkbox
 import androidx.activity.compose.BackHandler
@@ -86,6 +89,8 @@ fun ReceiptDetailScreen(
     onReadWithAi: (suspend (CapturedReceipt) -> AiRead)? = null,
     /** Saves the details the user kept from an AI reading. */
     onApplyAi: (suspend (CapturedReceipt, AiDetails) -> Unit)? = null,
+    /** What the receipt says was bought, as kept on the phone. */
+    items: List<ReceiptArchive.Item> = emptyList(),
 ) {
     val scopeForEdit = rememberCoroutineScope()
     var editing by remember(receipt.clientId) { mutableStateOf(startEditing) }
@@ -239,6 +244,22 @@ fun ReceiptDetailScreen(
                     DetailRow(stringResource(R.string.label_link), receipt.link)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
+                receipt.branch?.let {
+                    DetailRow(stringResource(R.string.label_branch), it, tag = "detail_branch")
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                receipt.storeAddress?.let { address ->
+                    DetailRow(stringResource(R.string.label_address), address, tag = "detail_address") {
+                        openUri(context, "geo:0,0?q=" + android.net.Uri.encode(address))
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                receipt.storePhone?.let { phone ->
+                    DetailRow(stringResource(R.string.label_phone), phone, tag = "detail_phone") {
+                        openUri(context, "tel:" + phone.filter { it.isDigit() || it == '+' })
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
                 receipt.invoiceNumber?.let {
                     DetailRow(stringResource(R.string.label_invoice_number), it, tag = "detail_invoice")
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -253,6 +274,8 @@ fun ReceiptDetailScreen(
                 }
                 DetailRow(stringResource(R.string.label_id), receipt.clientId)
             }
+
+            if (items.isNotEmpty()) ItemsCard(items)
 
             Spacer(Modifier.height(4.dp))
             val getPdf: () -> Unit = {
@@ -330,7 +353,7 @@ fun ReceiptDetailScreen(
                                     readingAi = false
                                     aiMessages = read.messages
                                     if (read is AiRead.Read) {
-                                        if (aiRows(receipt, read.details).isEmpty()) {
+                                        if (aiRows(receipt, read.details, items).isEmpty()) {
                                             aiMessages = listOf(R.string.ai_nothing_new) + read.messages
                                         } else {
                                             aiDetails = read.details
@@ -349,7 +372,8 @@ fun ReceiptDetailScreen(
             aiDetails?.let { details ->
                 if (onApplyAi != null) {
                     AiReviewDialog(
-                        rows = aiRows(receipt, details),
+                        rows = aiRows(receipt, details, items),
+                        read = details,
                         onDismiss = { aiDetails = null },
                         onSave = { kept ->
                             aiDetails = null
@@ -506,17 +530,83 @@ private fun formatDay(at: Long): String =
     java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(at))
 
 @Composable
-private fun DetailRow(label: String, value: String, tag: String? = null) {
+private fun DetailRow(label: String, value: String, tag: String? = null, onClick: (() -> Unit)? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 10.dp)
             .then(if (tag != null) Modifier.testTag(tag) else Modifier),
     ) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(2.dp))
-        Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (onClick != null) Green else MaterialTheme.colorScheme.onSurface,
+        )
     }
+}
+
+/** Opens a geo: or tel: link in whatever app handles it; nothing when none does. */
+private fun openUri(context: android.content.Context, uri: String) {
+    try {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri)))
+    } catch (_: android.content.ActivityNotFoundException) {
+    }
+}
+
+/** What was bought, folded until opened: one line each, with its quantity, price and discount. */
+@Composable
+private fun ItemsCard(items: List<ReceiptArchive.Item>) {
+    var open by remember { mutableStateOf(false) }
+    SectionCard {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { open = !open }
+                .testTag("items_header"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CardTitle(pluralStringResource(R.plurals.items_count, items.size, items.size))
+            Spacer(Modifier.weight(1f))
+            Text(stringResource(if (open) R.string.hide else R.string.show), color = Green)
+        }
+        if (open) {
+            Spacer(Modifier.height(8.dp))
+            items.forEachIndexed { i, item ->
+                if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .testTag("item_row"),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.name, style = MaterialTheme.typography.bodyLarge)
+                        itemDetail(item)?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        item.price?.let { Text(formatAmount(it), style = MaterialTheme.typography.bodyLarge) }
+                        item.discount?.takeIf { it > 0 }?.let {
+                            Text("-" + formatAmount(it), style = MaterialTheme.typography.bodySmall, color = Green)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** "0.342 kg × ₪52.85" or "2 × ₪11.90", from what the line printed. */
+private fun itemDetail(item: ReceiptArchive.Item): String? {
+    val q = item.quantity ?: return item.unitPrice?.let { "× " + formatAmount(it) }
+    val qty = if (item.unit == ItemUnit.KG) "%.3f kg".format(java.util.Locale.US, q) else "%s".format(
+        if (q == Math.floor(q)) q.toLong().toString() else q.toString(),
+    )
+    return item.unitPrice?.let { "$qty × ${formatAmount(it)}" } ?: qty
 }
 
 /** What the AI read from a receipt, in the app's terms: each null when it read nothing there. */
@@ -533,6 +623,10 @@ data class AiDetails(
     /** End of the last day, as the app keeps deadlines. */
     val returnBy: Long? = null,
     val warrantyUntil: Long? = null,
+    val storeAddress: String? = null,
+    val storePhone: String? = null,
+    val branch: String? = null,
+    val items: List<ReceiptArchive.Item> = emptyList(),
 )
 
 /** What reading a receipt with AI came to, as the screen shows it. */
@@ -568,12 +662,16 @@ internal enum class AiField(val label: Int, val editable: Boolean) {
     VAT(R.string.label_vat, true),
     RETURN_BY(R.string.label_return, false),
     WARRANTY(R.string.label_warranty, false),
+    BRANCH(R.string.label_branch, true),
+    ADDRESS(R.string.label_address, true),
+    PHONE(R.string.label_phone, true),
+    ITEMS(R.string.label_items, false),
 }
 
 private fun money(v: Double) = "%.2f".format(java.util.Locale.US, v)
 
 /** The fields worth showing: read, and not the same as what the receipt already has. */
-internal fun aiRows(receipt: CapturedReceipt, d: AiDetails): List<AiRow> = buildList {
+internal fun aiRows(receipt: CapturedReceipt, d: AiDetails, items: List<ReceiptArchive.Item> = emptyList()): List<AiRow> = buildList {
     fun add(field: AiField, read: String?, now: String?, millis: Long? = null) {
         if (read != null && read != now) add(AiRow(field, read, now, millis))
     }
@@ -585,6 +683,13 @@ internal fun aiRows(receipt: CapturedReceipt, d: AiDetails): List<AiRow> = build
     add(AiField.VAT, d.vat?.let(::money), receipt.vatAmount?.let(::money))
     add(AiField.RETURN_BY, d.returnBy?.let(::formatDay), receipt.returnBy?.let(::formatDay), d.returnBy)
     add(AiField.WARRANTY, d.warrantyUntil?.let(::formatDay), receipt.warrantyUntil?.let(::formatDay), d.warrantyUntil)
+    add(AiField.BRANCH, d.branch, receipt.branch)
+    add(AiField.ADDRESS, d.storeAddress, receipt.storeAddress)
+    add(AiField.PHONE, d.storePhone, receipt.storePhone)
+    // The items as one row: their count, and the count the receipt has now.
+    if (d.items.isNotEmpty() && d.items != items) {
+        add(AiField.ITEMS, d.items.size.toString(), items.size.takeIf { it > 0 }?.toString())
+    }
 }
 
 /**
@@ -592,7 +697,7 @@ internal fun aiRows(receipt: CapturedReceipt, d: AiDetails): List<AiRow> = build
  * nothing yet, unticked where it would replace something. Text fields can be corrected before saving.
  */
 @Composable
-private fun AiReviewDialog(rows: List<AiRow>, onDismiss: () -> Unit, onSave: (AiDetails) -> Unit) {
+private fun AiReviewDialog(rows: List<AiRow>, read: AiDetails, onDismiss: () -> Unit, onSave: (AiDetails) -> Unit) {
     val kept = remember(rows) { mutableStateMapOf<AiField, Boolean>().apply { rows.forEach { put(it.field, it.now == null) } } }
     val values = remember(rows) { mutableStateMapOf<AiField, String>().apply { rows.forEach { put(it.field, it.read) } } }
     AlertDialog(
@@ -622,7 +727,14 @@ private fun AiReviewDialog(rows: List<AiRow>, onDismiss: () -> Unit, onSave: (Ai
                                 )
                             } else {
                                 Text(stringResource(row.field.label), style = MaterialTheme.typography.bodySmall)
-                                Text(row.read, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    if (row.field == AiField.ITEMS) {
+                                        pluralStringResource(R.plurals.items_count, row.read.toInt(), row.read.toInt())
+                                    } else {
+                                        row.read
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
                             }
                             row.now?.let {
                                 Text(
@@ -638,7 +750,7 @@ private fun AiReviewDialog(rows: List<AiRow>, onDismiss: () -> Unit, onSave: (Ai
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(keptDetails(rows, kept, values)) },
+                onClick = { onSave(keptDetails(rows, kept, values, read)) },
                 enabled = rows.any { kept[it.field] == true },
                 modifier = Modifier.testTag("ai_save"),
             ) { Text(stringResource(R.string.save)) }
@@ -648,18 +760,27 @@ private fun AiReviewDialog(rows: List<AiRow>, onDismiss: () -> Unit, onSave: (Ai
 }
 
 /** What the user kept, as the receipt will store it. A corrected text that doesn't parse is left out. */
-private fun keptDetails(rows: List<AiRow>, kept: Map<AiField, Boolean>, values: Map<AiField, String>): AiDetails {
+private fun keptDetails(
+    rows: List<AiRow>,
+    kept: Map<AiField, Boolean>,
+    values: Map<AiField, String>,
+    read: AiDetails,
+): AiDetails {
     fun text(f: AiField) = values[f]?.trim()?.takeIf { kept[f] == true && it.isNotEmpty() }
     fun amount(f: AiField) = text(f)?.let { parseTypedAmount(it).getOrNull() }
-    val read = rows.associate { it.field to it }
+    val byField = rows.associate { it.field to it }
     return AiDetails(
         store = text(AiField.STORE),
-        purchasedAt = if (kept[AiField.DATE] == true) read[AiField.DATE]?.millis else null,
+        purchasedAt = if (kept[AiField.DATE] == true) byField[AiField.DATE]?.millis else null,
         amount = amount(AiField.AMOUNT),
         invoiceNumber = text(AiField.INVOICE)?.take(40),
         businessId = text(AiField.BUSINESS_ID)?.filter { it.isDigit() }?.takeIf { it.length == 9 },
         vat = amount(AiField.VAT),
-        returnBy = if (kept[AiField.RETURN_BY] == true) read[AiField.RETURN_BY]?.millis else null,
-        warrantyUntil = if (kept[AiField.WARRANTY] == true) read[AiField.WARRANTY]?.millis else null,
+        returnBy = if (kept[AiField.RETURN_BY] == true) byField[AiField.RETURN_BY]?.millis else null,
+        warrantyUntil = if (kept[AiField.WARRANTY] == true) byField[AiField.WARRANTY]?.millis else null,
+        branch = text(AiField.BRANCH)?.take(60),
+        storeAddress = text(AiField.ADDRESS)?.take(200),
+        storePhone = text(AiField.PHONE)?.filter { it.isDigit() || it == '-' || it == '+' }?.takeIf { it.length in 6..20 },
+        items = if (kept[AiField.ITEMS] == true) read.items else emptyList(),
     )
 }
