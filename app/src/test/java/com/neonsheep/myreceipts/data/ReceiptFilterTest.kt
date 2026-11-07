@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.File
 
 class ReceiptFilterTest {
 
@@ -355,4 +356,30 @@ class CompositeReceiptFilterTest {
         assertFalse(ReceiptLinks.isReceipt("https://wee.ai/s/AbC"))
         assertFalse(ReceiptLinks.isReceipt("not a url"))
     }
+
+    // Tabit's texts, as they arrive (names and links from real ones, codes changed).
+    private val tabit = MerchantConfig.fromJson(File("src/main/assets/merchants.json").readText())
+
+    @Test
+    fun tabit_anInvoiceText_isAReceipt() {
+        val filter = DomainMatchFilter(tabit)
+        val text = "לצפייה בחשבונית מקינג קונג חדרה יש להיכנס לקישור: https://tbit.be/q9tv8X"
+        assertEquals(listOf("https://tbit.be/q9tv8X"), filter.filter(text, "KINGKONG").matchedLinks)
+    }
+
+    @Test
+    fun tabit_surveysBookingsAndPromotions_areNotReceipts() {
+        val composite = buildFilterForTest(tabit)
+        listOf(
+            "תודה רבה שהתארחתם בקינג קונג קריית אתא נשמח אם תענו על מספר שאלות קצרות כדי שנוכל ללמוד על החוויה שלכם. https://tbit.be/SI6KvB",
+            "היי דורון, הזמנתך לקאי ליום שישי, 4 בספטמבר, 20:45 ל-2 סועדים אושרה. למידע נוסף או עדכון: https://tbit.be/Q7Tusg",
+            "יום הולדת שמח! תוכלו לבחור במתנה את אחד הקינוחים. להזמנות: https://tbit.be/yyg1R",
+            "ברוכים הבאים ל-KING KONG חדרה. להזמנת משלוח: https://tbit.be/od3Lnr",
+        ).forEach { text ->
+            assertEquals(text, emptyList<String>(), composite.filter(text, "Tabit").matchedLinks)
+        }
+    }
+
+    private fun buildFilterForTest(config: MerchantConfig) =
+        CompositeReceiptFilter(listOf(DomainMatchFilter(config), HeuristicReceiptFilter()))
 }

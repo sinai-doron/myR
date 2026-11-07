@@ -18,6 +18,10 @@ interface ReceiptFilter {
  *
  * MAXstock's texts link to a purchase history page on Pairzon (`h.html?b=…&t=…`), not a receipt:
  * it asks for a one-time code that expires five minutes after the text, so it is never kept.
+ *
+ * Tabit's short links (`tbit.be/<code>`) look the same whether they open an invoice, a survey, a
+ * table booking or a promotion, so the text decides: Tabit's receipt texts always say they are an
+ * invoice ("לצפייה בחשבונית מ…"), and the others never do.
  */
 object ReceiptLinks {
     private val receiptPathPrefixes = mapOf(
@@ -28,6 +32,26 @@ object ReceiptLinks {
     private val notReceiptPaths = mapOf(
         "pairzon.com" to listOf("/h.html"),
     )
+
+    // Domains whose links look alike for receipts and everything else: kept only when the text says receipt.
+    private val textMustSay = mapOf(
+        "tbit.be" to listOf("חשבונית", "קבלה", "invoice", "receipt"),
+    )
+
+    /** Whether the text the link came in allows it: for most sites always, for [textMustSay] only with a receipt word. */
+    fun textAllows(url: String, messageBody: String): Boolean {
+        val host = try {
+            URI(url).host?.lowercase()
+        } catch (_: Exception) {
+            return false
+        } ?: return false
+        val words = textMustSay.entries
+            .firstOrNull { (domain, _) -> host == domain || host.endsWith(".$domain") }
+            ?.value
+            ?: return true
+        val body = messageBody.lowercase()
+        return words.any { body.contains(it) }
+    }
 
     fun isReceipt(url: String): Boolean {
         val uri = try {
@@ -80,7 +104,9 @@ class HeuristicReceiptFilter : ReceiptFilter {
         val hasNegative = negativeKeywords.any { bodyLower.contains(it) }
         if (hasNegative) return FilterResult(emptyList(), sender)
 
-        val urls = urlPattern.findAll(messageBody).map { it.value }.filter(ReceiptLinks::isReceipt).toList()
+        val urls = urlPattern.findAll(messageBody).map { it.value }
+            .filter { ReceiptLinks.isReceipt(it) && ReceiptLinks.textAllows(it, messageBody) }
+            .toList()
         return FilterResult(matchedLinks = urls, senderLabel = sender)
     }
 }
@@ -93,7 +119,7 @@ class DomainMatchFilter(config: MerchantConfig) : ReceiptFilter {
     override fun filter(messageBody: String, sender: String): FilterResult {
         val matchedLinks = urlPattern.findAll(messageBody)
             .map { it.value }
-            .filter { url -> isOnList(url) && ReceiptLinks.isReceipt(url) }
+            .filter { url -> isOnList(url) && ReceiptLinks.isReceipt(url) && ReceiptLinks.textAllows(url, messageBody) }
             .toList()
 
         return FilterResult(
