@@ -67,4 +67,37 @@ class ReceiptTotalsTest {
         assertNull(total("שם פריט סה\"כ", "סה\"כ 4 פריטים"))
         assertNull(total(""))
     }
+
+    // A furniture order the way Android reads it: the labels in one column, the amounts in another.
+    private val orderInColumns = arrayOf(
+        "1 1234 שולחן אוכל ₪ 1,990 20 ₪ 2,490 1",
+        "2 5678 הובלה והרכבה 250 ש\"ח 250 ₪ 250 ₪",
+        "הנחה % 0.00 0 ₪",
+        "סה\"כ לתשלום",
+        "סה\"כ אחרי הנחה",
+        "₪ 2,240",
+        "מע\"מ % 18 342 ₪",
+        "₪ 1,898",
+    )
+
+    @Test
+    fun amountsInTheirOwnColumn_theOneThatIsAnAmountPlusItsVat() {
+        // 1,898 + 18% VAT (342) = 2,240; the 1,898 after the other label adds up to nothing.
+        assertEquals(2240.0, total(*orderInColumns)!!, 0.001)
+    }
+
+    @Test
+    fun amountsInTheirOwnColumn_atLastYearsVat() {
+        assertEquals(117.0, total("סכום לתשלום", "₪ 117", "₪ 100", "מע\"מ 17% ₪ 17")!!, 0.001)
+    }
+
+    @Test
+    fun amountsInTheirOwnColumn_nothingWhenTheyDontAddUp() {
+        // No VAT line: the column could be in either order.
+        assertNull(total("סה\"כ לתשלום", "סה\"כ אחרי הנחה", "₪ 2,240", "₪ 1,898"))
+        // The VAT is there, but not on an amount that makes the one after the label.
+        assertNull(total("סה\"כ לתשלום", "₪ 500", "מע\"מ ₪ 90", "₪ 400"))
+        // Too far from the label.
+        assertNull(total("סה\"כ לתשלום", "א", "ב", "ג", "ד", "₪ 2,240", "₪ 1,898", "₪ 342"))
+    }
 }
