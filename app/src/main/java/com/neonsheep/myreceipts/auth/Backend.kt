@@ -50,4 +50,21 @@ object Backend {
             Result.failure(e)
         }
     }
+
+    /**
+     * Has the backend's AI read a receipt's PDF: only when the user asked, for this one receipt.
+     * Never logs what it read.
+     */
+    suspend fun readReceipt(context: Context, pdf: File): Result<BackendApi.ReadResult> {
+        val auth = auth(context)
+        if (auth.currentUser() == null) return Result.failure(BackendException.Unauthorized)
+        return try {
+            val read = auth.withAccessToken { token -> api.readReceipt(token, pdf) }
+            Log.d(TAG, "AI read: receipt ${read.isReceipt}, amount ${read.shekels != null}")
+            Result.success(read)
+        } catch (e: BackendException) {
+            Log.w(TAG, "AI read failed: ${e.message}")
+            Result.failure(e)
+        }
+    }
 }

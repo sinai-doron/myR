@@ -116,6 +116,9 @@ data class CapturedReceipt(
     val textArrivedAt: Long = timestamp,
     /** How it came in: [com.neonsheep.myreceipts.data.Origin]. */
     val origin: String = com.neonsheep.myreceipts.data.Origin.SMS,
+    val invoiceNumber: String? = null,
+    val businessId: String? = null,
+    val vatAmount: Double? = null,
 )
 
 data class VendorSummary(

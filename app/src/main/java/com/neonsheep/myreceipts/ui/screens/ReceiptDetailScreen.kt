@@ -1,5 +1,7 @@
 package com.neonsheep.myreceipts.ui.screens
 
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.material3.Checkbox
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -80,6 +82,10 @@ fun ReceiptDetailScreen(
     startEditing: Boolean = false,
     /** Turns a scan's or photo's pages a quarter turn clockwise; false when it couldn't. Null: not offered. */
     onRotate: (suspend (CapturedReceipt) -> Boolean)? = null,
+    /** Has the backend's AI read the receipt's PDF, after the user agrees. Null: not offered. */
+    onReadWithAi: (suspend (CapturedReceipt) -> AiRead)? = null,
+    /** Saves the details the user kept from an AI reading. */
+    onApplyAi: (suspend (CapturedReceipt, AiDetails) -> Unit)? = null,
 ) {
     val scopeForEdit = rememberCoroutineScope()
     var editing by remember(receipt.clientId) { mutableStateOf(startEditing) }
@@ -102,6 +108,11 @@ fun ReceiptDetailScreen(
     var fetching by remember(receipt.clientId) { mutableStateOf(false) }
     var fetchError by remember(receipt.clientId) { mutableStateOf<String?>(null) }
     var editingAmount by remember(receipt.clientId) { mutableStateOf(false) }
+    var askingAi by remember(receipt.clientId) { mutableStateOf(false) }
+    var readingAi by remember(receipt.clientId) { mutableStateOf(false) }
+    // What the AI read, shown field by field for the user to keep or not.
+    var aiDetails by remember(receipt.clientId) { mutableStateOf<AiDetails?>(null) }
+    var aiMessages by remember(receipt.clientId) { mutableStateOf<List<Int>>(emptyList()) }
 
     Column(
         modifier = Modifier
@@ -163,6 +174,30 @@ fun ReceiptDetailScreen(
                         }
                     }
                 }
+                // A PDF to read from: the AI can read its details, if the user asks.
+                if (onReadWithAi != null && onApplyAi != null && hasPdf && !receipt.isSample()) {
+                    TextButton(
+                        onClick = { askingAi = true },
+                        enabled = !readingAi,
+                        modifier = Modifier.testTag("read_with_ai"),
+                    ) {
+                        if (readingAi) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Green)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.ai_reading), color = Green)
+                        } else {
+                            Text(stringResource(R.string.ai_read), color = Green)
+                        }
+                    }
+                }
+                aiMessages.forEach { message ->
+                    Text(
+                        stringResource(message),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("ai_message"),
+                    )
+                }
                 amountNote(receipt)?.let { note ->
                     Text(
                         note,
@@ -202,6 +237,18 @@ fun ReceiptDetailScreen(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 if (!receipt.isFile()) {
                     DetailRow(stringResource(R.string.label_link), receipt.link)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                receipt.invoiceNumber?.let {
+                    DetailRow(stringResource(R.string.label_invoice_number), it, tag = "detail_invoice")
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                receipt.businessId?.let {
+                    DetailRow(stringResource(R.string.label_business_id), it, tag = "detail_business_id")
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                receipt.vatAmount?.let {
+                    DetailRow(stringResource(R.string.label_vat), formatAmount(it), tag = "detail_vat")
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
                 DetailRow(stringResource(R.string.label_id), receipt.clientId)
@@ -266,6 +313,50 @@ fun ReceiptDetailScreen(
                         scope.launch { onSetAmount(receipt, amount) }
                     },
                 )
+            }
+            if (askingAi && onReadWithAi != null) {
+                AlertDialog(
+                    onDismissRequest = { askingAi = false },
+                    title = { Text(stringResource(R.string.ai_confirm_title)) },
+                    text = { Text(stringResource(R.string.ai_confirm_body)) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                askingAi = false
+                                readingAi = true
+                                aiMessages = emptyList()
+                                scope.launch {
+                                    val read = onReadWithAi(receipt)
+                                    readingAi = false
+                                    aiMessages = read.messages
+                                    if (read is AiRead.Read) {
+                                        if (aiRows(receipt, read.details).isEmpty()) {
+                                            aiMessages = listOf(R.string.ai_nothing_new) + read.messages
+                                        } else {
+                                            aiDetails = read.details
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.testTag("ai_confirm"),
+                        ) { Text(stringResource(R.string.ai_confirm_ok)) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { askingAi = false }) { Text(stringResource(R.string.cancel)) }
+                    },
+                )
+            }
+            aiDetails?.let { details ->
+                if (onApplyAi != null) {
+                    AiReviewDialog(
+                        rows = aiRows(receipt, details),
+                        onDismiss = { aiDetails = null },
+                        onSave = { kept ->
+                            aiDetails = null
+                            scope.launch { onApplyAi(receipt, kept) }
+                        },
+                    )
+                }
             }
             if (fetchError != null) {
                 Text(
@@ -426,4 +517,149 @@ private fun DetailRow(label: String, value: String, tag: String? = null) {
         Spacer(Modifier.height(2.dp))
         Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
+}
+
+/** What the AI read from a receipt, in the app's terms: each null when it read nothing there. */
+data class AiDetails(
+    val store: String? = null,
+    /** The purchase day, kept at the receipt's own time of day. */
+    val purchasedAt: Long? = null,
+    /** In shekels. */
+    val amount: Double? = null,
+    val invoiceNumber: String? = null,
+    val businessId: String? = null,
+    /** In shekels. */
+    val vat: Double? = null,
+    /** End of the last day, as the app keeps deadlines. */
+    val returnBy: Long? = null,
+    val warrantyUntil: Long? = null,
+)
+
+/** What reading a receipt with AI came to, as the screen shows it. */
+sealed class AiRead {
+    /** Messages to show under the amount: string resources. */
+    abstract val messages: List<Int>
+
+    /** Read: the details found, offered field by field. */
+    data class Read(val details: AiDetails, override val messages: List<Int>) : AiRead()
+
+    /** Read, but not a receipt, or nothing in it could be read. */
+    data class NotFound(override val messages: List<Int>) : AiRead()
+
+    /** Not read: signed out, allowance used, unavailable, too large, or failed. */
+    data class Failed(override val messages: List<Int>) : AiRead()
+}
+
+/** One field the AI read that differs from what the receipt has: what it read, and what is there now. */
+internal data class AiRow(
+    val field: AiField,
+    val read: String,
+    val now: String?,
+    /** For a date: the moment it stands for, as the receipt stores it. */
+    val millis: Long? = null,
+)
+
+internal enum class AiField(val label: Int, val editable: Boolean) {
+    STORE(R.string.label_store, true),
+    DATE(R.string.label_date, false),
+    AMOUNT(R.string.amount_paid, true),
+    INVOICE(R.string.label_invoice_number, true),
+    BUSINESS_ID(R.string.label_business_id, true),
+    VAT(R.string.label_vat, true),
+    RETURN_BY(R.string.label_return, false),
+    WARRANTY(R.string.label_warranty, false),
+}
+
+private fun money(v: Double) = "%.2f".format(java.util.Locale.US, v)
+
+/** The fields worth showing: read, and not the same as what the receipt already has. */
+internal fun aiRows(receipt: CapturedReceipt, d: AiDetails): List<AiRow> = buildList {
+    fun add(field: AiField, read: String?, now: String?, millis: Long? = null) {
+        if (read != null && read != now) add(AiRow(field, read, now, millis))
+    }
+    add(AiField.STORE, d.store, receipt.senderLabel.takeIf { it != receipt.textSender || !receipt.isFile() })
+    add(AiField.DATE, d.purchasedAt?.let(::formatDay), formatDay(receipt.timestamp), d.purchasedAt)
+    add(AiField.AMOUNT, d.amount?.let(::money), receipt.totalAmount?.let(::money))
+    add(AiField.INVOICE, d.invoiceNumber, receipt.invoiceNumber)
+    add(AiField.BUSINESS_ID, d.businessId, receipt.businessId)
+    add(AiField.VAT, d.vat?.let(::money), receipt.vatAmount?.let(::money))
+    add(AiField.RETURN_BY, d.returnBy?.let(::formatDay), receipt.returnBy?.let(::formatDay), d.returnBy)
+    add(AiField.WARRANTY, d.warrantyUntil?.let(::formatDay), receipt.warrantyUntil?.let(::formatDay), d.warrantyUntil)
+}
+
+/**
+ * Every field the AI read that differs from the receipt, each with a box: ticked where the receipt has
+ * nothing yet, unticked where it would replace something. Text fields can be corrected before saving.
+ */
+@Composable
+private fun AiReviewDialog(rows: List<AiRow>, onDismiss: () -> Unit, onSave: (AiDetails) -> Unit) {
+    val kept = remember(rows) { mutableStateMapOf<AiField, Boolean>().apply { rows.forEach { put(it.field, it.now == null) } } }
+    val values = remember(rows) { mutableStateMapOf<AiField, String>().apply { rows.forEach { put(it.field, it.read) } } }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.ai_review_title)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(stringResource(R.string.ai_check), style = MaterialTheme.typography.bodyMedium)
+                rows.forEach { row ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = kept[row.field] == true,
+                            onCheckedChange = { kept[row.field] = it },
+                            modifier = Modifier.testTag("ai_keep_${row.field.name.lowercase()}"),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            if (row.field.editable) {
+                                OutlinedTextField(
+                                    value = values[row.field].orEmpty(),
+                                    onValueChange = { values[row.field] = it },
+                                    label = { Text(stringResource(row.field.label)) },
+                                    singleLine = true,
+                                    modifier = Modifier.testTag("ai_value_${row.field.name.lowercase()}"),
+                                )
+                            } else {
+                                Text(stringResource(row.field.label), style = MaterialTheme.typography.bodySmall)
+                                Text(row.read, style = MaterialTheme.typography.bodyLarge)
+                            }
+                            row.now?.let {
+                                Text(
+                                    stringResource(R.string.ai_now, it),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(keptDetails(rows, kept, values)) },
+                enabled = rows.any { kept[it.field] == true },
+                modifier = Modifier.testTag("ai_save"),
+            ) { Text(stringResource(R.string.save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** What the user kept, as the receipt will store it. A corrected text that doesn't parse is left out. */
+private fun keptDetails(rows: List<AiRow>, kept: Map<AiField, Boolean>, values: Map<AiField, String>): AiDetails {
+    fun text(f: AiField) = values[f]?.trim()?.takeIf { kept[f] == true && it.isNotEmpty() }
+    fun amount(f: AiField) = text(f)?.let { parseTypedAmount(it).getOrNull() }
+    val read = rows.associate { it.field to it }
+    return AiDetails(
+        store = text(AiField.STORE),
+        purchasedAt = if (kept[AiField.DATE] == true) read[AiField.DATE]?.millis else null,
+        amount = amount(AiField.AMOUNT),
+        invoiceNumber = text(AiField.INVOICE)?.take(40),
+        businessId = text(AiField.BUSINESS_ID)?.filter { it.isDigit() }?.takeIf { it.length == 9 },
+        vat = amount(AiField.VAT),
+        returnBy = if (kept[AiField.RETURN_BY] == true) read[AiField.RETURN_BY]?.millis else null,
+        warrantyUntil = if (kept[AiField.WARRANTY] == true) read[AiField.WARRANTY]?.millis else null,
+    )
 }

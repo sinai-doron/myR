@@ -76,6 +76,37 @@ class BackendApi(
         }
     }
 
+    /**
+     * Sends a receipt's PDF to be read by the backend's AI (POST /api/receipts/read) and returns what
+     * it read. Only when the user asked, for this one receipt. The PDF isn't kept by the backend.
+     */
+    suspend fun readReceipt(accessToken: String, pdf: File): ReadResult {
+        val request = request("/api/receipts/read", accessToken)
+            .post(pdf.readBytes().toRequestBody(PDF))
+            .build()
+        return withContext(Dispatchers.IO) {
+            val response = try {
+                pdfClient().newCall(request).execute()
+            } catch (e: IOException) {
+                throw BackendException.Network(e)
+            }
+            response.use {
+                val text = it.body.string()
+                when {
+                    it.isSuccessful -> json.decodeFromString<ReadResult>(text)
+                    it.code == 401 -> throw BackendException.Unauthorized
+                    it.code == 429 && aiCode(text) == "AI_BUDGET_EXCEEDED" -> throw BackendException.AiBudgetUsed
+                    it.code == 429 -> throw BackendException.RateLimited(it.header("Retry-After")?.toLongOrNull() ?: 60)
+                    it.code == 503 -> throw BackendException.AiUnavailable
+                    else -> throw BackendException.Http(it.code)
+                }
+            }
+        }
+    }
+
+    private fun aiCode(body: String): String? =
+        runCatching { json.decodeFromString<AiRefusal>(body).code }.getOrNull()
+
     /** Sends a batch of failure reports, already encoded ([com.neonsheep.myreceipts.data.FailureReport.batch]). */
     suspend fun sendReports(accessToken: String, batchJson: String) {
         call(request("/api/receipts/reports", accessToken).post(batchJson.toRequestBody(JSON)).build()) { }
@@ -136,6 +167,35 @@ class BackendApi(
     @Serializable
     private data class ReceiptPdfRequest(val url: String)
 
+    @Serializable
+    private data class AiRefusal(val code: String? = null)
+
+    /** How much of this month's AI allowance is used, in US dollars. */
+    @Serializable
+    data class AiBudget(val usedUsd: Double, val limitUsd: Double) {
+        /** At or past 80% of the month's allowance (spec decision 19). */
+        val nearLimit: Boolean get() = limitUsd > 0 && usedUsd >= limitUsd * 0.8
+    }
+
+    /** What the AI read from a receipt: each field null when it couldn't read it. */
+    @Serializable
+    data class ReadResult(
+        val isReceipt: Boolean,
+        val store: String? = null,
+        val date: String? = null,
+        val total: Double? = null,
+        val currency: String? = null,
+        val invoiceNumber: String? = null,
+        val businessId: String? = null,
+        val vat: Double? = null,
+        val returnBy: String? = null,
+        val warrantyUntil: String? = null,
+        val budget: AiBudget,
+    ) {
+        /** The amount in shekels, when it read one: another currency isn't one to record. */
+        val shekels: Double? get() = total?.takeIf { isReceipt && currency == "ILS" && it > 0 }
+    }
+
     object Totals {
         private val PLAIN_AMOUNT = Regex("""\d{1,7}(\.\d{1,2})?""")
 
@@ -161,6 +221,7 @@ class BackendApi(
     companion object {
         private const val PLATFORM = "android"
         private val JSON = "application/json".toMediaType()
+        private val PDF = "application/pdf".toMediaType()
         private val EMPTY_BODY = ByteArray(0).toRequestBody(null)
         private val json = Json { ignoreUnknownKeys = true }
 
@@ -191,6 +252,16 @@ sealed class BackendException(message: String, cause: Throwable? = null) : Excep
     }
 
     class RateLimited(val retryAfterSeconds: Long) : BackendException("rate limited")
+
+    /** This month's AI allowance is used up: AI reading is back on the 1st (UTC). */
+    data object AiBudgetUsed : BackendException("AI budget used") {
+        private fun readResolve(): Any = AiBudgetUsed
+    }
+
+    /** AI reading is off or everyone's daily allowance is used: try again later. */
+    data object AiUnavailable : BackendException("AI unavailable") {
+        private fun readResolve(): Any = AiUnavailable
+    }
     class Http(val code: Int) : BackendException("HTTP $code")
     class Network(cause: IOException) : BackendException("network: ${cause.message}", cause)
 }

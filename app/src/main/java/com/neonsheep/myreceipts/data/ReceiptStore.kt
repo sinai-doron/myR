@@ -48,6 +48,12 @@ data class CapturedReceiptEntity(
     @ColumnInfo(defaultValue = "0") val notDuplicate: Boolean = false,
     /** How it came in: see [Origin]. A file or scan has no [link]: its PDF is the receipt. */
     @ColumnInfo(defaultValue = "sms") val origin: String = Origin.SMS,
+    /** The receipt's or invoice's own number, as printed. Null: not known. */
+    val invoiceNumber: String? = null,
+    /** The business's 9-digit Israeli tax ID (ח.פ. / עוסק מורשה). Null: not known. */
+    val businessId: String? = null,
+    /** The VAT included in [totalAmount], in shekels. Null: not known. */
+    val vatAmount: Double? = null,
 ) {
     /** The store, as the user named it or as the text said. */
     val store: String get() = storeName ?: senderLabel
@@ -218,6 +224,13 @@ interface ReceiptDao {
     @Query("UPDATE captured_receipts SET category = :category WHERE clientId = :clientId")
     suspend fun setCategory(clientId: String, category: String?)
 
+    /** The printed details the user confirmed: invoice number, tax ID and VAT. */
+    @Query(
+        "UPDATE captured_receipts SET invoiceNumber = :invoiceNumber, businessId = :businessId, vatAmount = :vat " +
+            "WHERE clientId = :clientId",
+    )
+    suspend fun setDetails(clientId: String, invoiceNumber: String?, businessId: String?, vat: Double?)
+
     @Query("UPDATE captured_receipts SET returnBy = :returnBy, warrantyUntil = :warrantyUntil WHERE clientId = :clientId")
     suspend fun setDeadlines(clientId: String, returnBy: Long?, warrantyUntil: Long?)
 
@@ -301,7 +314,7 @@ abstract class AppDatabase : RoomDatabase() {
 }
 
 /** The database version. A bump needs a migration in [MIGRATIONS]. */
-const val DB_VERSION = 8
+const val DB_VERSION = 9
 
 /** Versions 1 and 2 were development builds with no migrations: the only ones an update may wipe. */
 val WIPED_VERSIONS = intArrayOf(1, 2)
@@ -311,7 +324,7 @@ val WIPED_VERSIONS = intArrayOf(1, 2)
  * doesn't reach [AppDatabase]'s version.
  */
 val MIGRATIONS: Array<androidx.room.migration.Migration>
-    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
 
 /** v4 adds pdfStatus. A real migration, so an update never wipes the owner's receipts. */
 val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
@@ -357,5 +370,14 @@ val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
 val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
     override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE captured_receipts ADD COLUMN origin TEXT NOT NULL DEFAULT 'sms'")
+    }
+}
+
+/** v9 keeps a receipt's printed details, read with AI and confirmed by the user. */
+val MIGRATION_8_9 = object : androidx.room.migration.Migration(8, 9) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN invoiceNumber TEXT")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN businessId TEXT")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN vatAmount REAL")
     }
 }
