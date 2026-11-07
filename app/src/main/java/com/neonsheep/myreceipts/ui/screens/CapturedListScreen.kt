@@ -138,6 +138,10 @@ fun HomeScreen(
     onOpenReceipt: (CapturedReceipt) -> Unit = {},
     onAddSamples: () -> Unit = {},
     onRemoveSamples: () -> Unit = {},
+    /** Groups of receipts that look like one purchase ([com.neonsheep.myreceipts.data.Duplicates]). */
+    duplicates: List<List<CapturedReceipt>> = emptyList(),
+    onNotSame: (List<CapturedReceipt>) -> Unit = {},
+    onMerge: (List<CapturedReceipt>) -> Unit = {},
 ) {
     var showAccount by remember { mutableStateOf(false) }
     val monthName = remember { SimpleDateFormat("LLLL", Locale.getDefault()).format(Date()) }
@@ -181,6 +185,10 @@ fun HomeScreen(
 
         if (captureOff) CaptureOffBanner(onTurnOn = onTurnOnCapture)
         if (receipts.any { it.isSample() }) SamplesBanner(onRemove = onRemoveSamples)
+        // One at a time: the next shows once this one is answered.
+        duplicates.firstOrNull()?.let { group ->
+            SameReceiptCard(group, onNotSame = { onNotSame(group) }, onMerge = { onMerge(group) })
+        }
 
         // The month and its budget, even before the first receipt
         MonthHero(spending.total, budgets[BudgetEntity.ALL], onOpenSpending)
@@ -419,6 +427,42 @@ private fun RecentReceipts(
     }
 }
 
+/**
+ * Receipts that look like the same purchase: the store, the amount and when each came in. The user
+ * says whether they're the same; nothing is merged or deleted without that.
+ */
+@Composable
+internal fun SameReceiptCard(group: List<CapturedReceipt>, onNotSame: () -> Unit, onMerge: () -> Unit) {
+    val first = group.first()
+    SectionCard(modifier = Modifier.testTag("same_receipt"), padding = 16.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                stringResource(R.string.same_receipt_title),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                stringResource(
+                    R.string.same_receipt_body,
+                    first.senderLabel,
+                    first.totalAmount?.let { formatAmount(it) } ?: "",
+                    arrivals(group.map { it.timestamp }),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onNotSame, modifier = Modifier.testTag("same_receipt_no")) {
+                    Text(stringResource(R.string.same_receipt_no), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = onMerge, modifier = Modifier.testTag("same_receipt_merge")) {
+                    Text(stringResource(R.string.same_receipt_merge), color = Green)
+                }
+            }
+        }
+    }
+}
+
 /** While sample receipts are shown: says so, and removes them all. */
 @Composable
 private fun SamplesBanner(onRemove: () -> Unit) {
@@ -492,6 +536,15 @@ internal fun formatTimestamp(epochMillis: Long): String =
     SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(epochMillis))
 internal fun formatShortTimestamp(epochMillis: Long): String =
     SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()).format(Date(epochMillis))
+/** When each came in: "6 Nov, 12:40 · 12:41", the day said once while it's the same. */
+internal fun arrivals(times: List<Long>): String {
+    val day = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+    val clock = SimpleDateFormat("HH:mm", Locale.getDefault())
+    return times.mapIndexed { i, at ->
+        val sameDay = i > 0 && day.format(Date(at)) == day.format(Date(times[i - 1]))
+        if (sameDay) clock.format(Date(at)) else formatShortTimestamp(at)
+    }.joinToString(" · ")
+}
 internal fun formatDate(epochMillis: Long): String =
     SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(epochMillis))
 /** Shekels in the app's language: "₪442.20" in English, "442.20 ₪" in Hebrew. */

@@ -13,6 +13,7 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Entity(
@@ -218,6 +219,19 @@ interface ReceiptDao {
 
     @Query("UPDATE captured_receipts SET notDuplicate = 1 WHERE clientId IN (:clientIds)")
     suspend fun markNotDuplicate(clientIds: List<String>)
+
+    @Update
+    suspend fun update(receipt: CapturedReceiptEntity)
+
+    @Query("DELETE FROM captured_receipts WHERE clientId IN (:clientIds)")
+    suspend fun deleteByClientIds(clientIds: List<String>)
+
+    /** Receipts the user said are the same, as one: [kept] saved, the others deleted, at once. */
+    @Transaction
+    suspend fun merge(kept: CapturedReceiptEntity, removed: List<String>) {
+        update(kept)
+        deleteByClientIds(removed)
+    }
 
     /** Receipts with a PDF on the phone whose amount nobody has looked for yet. */
     @Query("SELECT * FROM captured_receipts WHERE pdfPath IS NOT NULL AND totalAmount IS NULL AND totalSource IS NULL")

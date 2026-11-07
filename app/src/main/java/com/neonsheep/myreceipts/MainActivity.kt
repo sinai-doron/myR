@@ -44,6 +44,7 @@ import com.neonsheep.myreceipts.data.Category
 import com.neonsheep.myreceipts.data.SampleReceipts
 import com.neonsheep.myreceipts.data.Spend
 import com.neonsheep.myreceipts.data.Spending
+import com.neonsheep.myreceipts.data.Duplicates
 import com.neonsheep.myreceipts.data.StoreCategoryEntity
 import com.neonsheep.myreceipts.ui.screens.SpendingScreen
 import java.time.YearMonth
@@ -238,6 +239,14 @@ class MainActivity : ComponentActivity() {
                         }
                         val spends = receipts.map { Spend(it.senderLabel, it.timestamp, it.totalAmount, Category.fromName(it.category)) }
                         val thisMonth = Spending.forMonth(YearMonth.now(), spends, categoryOf)
+                        val duplicates = remember(receipts) {
+                            val byId = receipts.associateBy { it.clientId }
+                            Duplicates.groups(
+                                receipts.filterNot { SampleReceipts.isSample(it.clientId) }.map {
+                                    Duplicates.Candidate(it.clientId, it.senderLabel, it.totalAmount, it.timestamp, it.notDuplicate)
+                                },
+                            ).map { ids -> ids.mapNotNull(byId::get) }
+                        }
                         // Back from another tab goes home; from home, it leaves the app.
                         BackHandler(enabled = tab != Tab.HOME) { tab = Tab.HOME }
                         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -257,6 +266,9 @@ class MainActivity : ComponentActivity() {
                                     onOpenReceipt = { selectedReceiptId = it.clientId },
                                     onAddSamples = { scope.launch { dao.insertAll(SampleReceipts.build()) } },
                                     onRemoveSamples = { scope.launch { dao.deleteSamples() } },
+                                    duplicates = duplicates,
+                                    onNotSame = { group -> scope.launch { dao.markNotDuplicate(group.map { it.clientId }) } },
+                                    onMerge = { group -> scope.launch { merge(group) } },
                                     onSignOut = {
                                         scope.launch {
                                             auth.signOut()
@@ -339,6 +351,21 @@ class MainActivity : ComponentActivity() {
                 else getString(R.string.error_server_pdf)
             else -> getString(R.string.error_pdf)
         }
+    }
+
+    /** Receipts the user said are one: kept as one, the others' PDFs, downloads and reminders gone. */
+    private suspend fun merge(group: List<CapturedReceipt>) {
+        val dao = AppDatabase.getInstance(this).receiptDao()
+        val entities = group.mapNotNull { dao.getByClientId(it.clientId) }
+        if (entities.size < 2) return
+        val (kept, removed) = Duplicates.merge(entities)
+        dao.merge(kept, removed.map { it.clientId })
+        removed.forEach { r ->
+            Backend.pdfFile(this, r.clientId).delete()
+            ReceiptDownloadWorker.cancel(this, r.clientId)
+            DeadlineReminderWorker.cancel(this, r.clientId)
+        }
+        DeadlineReminderWorker.schedule(this, kept)
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -176,4 +176,8 @@
     <string name="reminder_return_text">אפשר להחזיר עד %1$s.</string>
     <string name="reminder_warranty_title">האחריות מסתיימת: %1$s</string>
     <string name="reminder_warranty_text">האחריות מסתיימת ב-%1$s.</string>
+    <string name="same_receipt_title">אותה קבלה?</string>
+    <string name="same_receipt_body">%1$s, %2$s, התקבלה יותר מפעם אחת: %3$s.</string>
+    <string name="same_receipt_no">לא אותה קבלה</string>
+    <string name="same_receipt_merge">לאחד</string>
 </resources>

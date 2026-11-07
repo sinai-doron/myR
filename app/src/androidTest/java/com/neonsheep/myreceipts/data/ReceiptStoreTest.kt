@@ -121,4 +121,24 @@ class ReceiptStoreTest {
         assertEquals(700.0, back.totalAmount!!, 0.001)
         assertEquals(TotalSource.USER, back.totalSource)
     }
+
+    @Test
+    fun merge_savesTheKeptReceipt_andDeletesTheOthers_together() = runBlocking {
+        fun r(id: String, at: Long) = CapturedReceiptEntity(
+            link = "https://example.test/$id", senderLabel = "Delek", timestamp = at, clientId = id, capturedAt = at,
+            totalAmount = 312.15, totalSource = "page",
+        )
+        dao.insert(r("a", 0).copy(pdfPath = "/files/a.pdf"))
+        dao.insert(r("b", 60_000).copy(category = "CAR", returnBy = 5L))
+        dao.insert(r("other", 0))
+
+        val (kept, removed) = Duplicates.merge(listOfNotNull(dao.getByClientId("a"), dao.getByClientId("b")))
+        dao.merge(kept, removed.map { it.clientId })
+
+        assertEquals(listOf("a", "other"), dao.getAllOnce().map { it.clientId }.sorted())
+        val a = dao.getByClientId("a")!!
+        assertEquals("CAR", a.category)
+        assertEquals(5L, a.returnBy)
+        assertEquals("/files/a.pdf", a.pdfPath)
+    }
 }
