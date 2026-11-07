@@ -126,6 +126,8 @@ dependencies {
     implementation(libs.okhttp)
     // Play services auth pulls in an old Fragment; ActivityResult APIs need 1.3+ (lint, release)
     implementation(libs.fragment)
+    // The camera's document scanner: on the phone, through Play services, no camera permission.
+    implementation(libs.mlkit.document.scanner)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)

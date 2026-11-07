@@ -180,4 +180,24 @@
     <string name="same_receipt_body">%1$s, %2$s, התקבלה יותר מפעם אחת: %3$s.</string>
     <string name="same_receipt_no">לא אותה קבלה</string>
     <string name="same_receipt_merge">לאחד</string>
+    <!-- More ways in: a file, a scan, or Share from another app -->
+    <string name="add_receipt">הוספת קבלה</string>
+    <string name="add_scan">סריקת קבלה מנייר</string>
+    <string name="add_scan_note">המצלמה מיישרת אותה ושומרת PDF, בטלפון</string>
+    <string name="add_file">בחירת PDF או תמונה</string>
+    <string name="add_file_note">או שיתוף מוואטסאפ, מהמייל או מהדפדפן</string>
+    <string name="store_uploaded">קבלה שהועלתה</string>
+    <string name="store_scanned">קבלה סרוקה</string>
+    <string name="label_added">נוספה</string>
+    <string name="amount_not_read">לא הצלחנו לקרוא את הסכום. כדאי להוסיף אותו כדי שייספר בהוצאות.</string>
+    <string name="import_link_saved">הקבלה נשמרה. מורידים את ה-PDF…</string>
+    <string name="import_already_saved">הקבלה הזו כבר שמורה</string>
+    <string name="import_not_receipt">אפשר להוסיף כקבלה רק PDF או תמונה</string>
+    <string name="import_too_big">הקובץ גדול מדי לקבלה (מעל 25MB)</string>
+    <string name="import_unreadable">לא הצלחנו לפתוח את הקובץ</string>
+    <string name="import_no_link">אין קישור לקבלה במה ששיתפת</string>
+    <string name="import_unknown_site">הקישור הזה עוד לא מאתר קבלות שאנחנו מכירים</string>
+    <string name="scanner_unavailable">הסורק לא זמין בטלפון הזה</string>
+    <string name="rotate_page">סיבוב</string>
+    <string name="page_preview">העמוד הראשון של הקבלה</string>
 </resources>

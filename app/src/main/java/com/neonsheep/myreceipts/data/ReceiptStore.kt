@@ -46,12 +46,38 @@ data class CapturedReceiptEntity(
     val warrantyUntil: Long? = null,
     /** The user said this isn't the same receipt as a similar one, so it isn't flagged again. */
     @ColumnInfo(defaultValue = "0") val notDuplicate: Boolean = false,
+    /** How it came in: see [Origin]. A file or scan has no [link]: its PDF is the receipt. */
+    @ColumnInfo(defaultValue = "sms") val origin: String = Origin.SMS,
 ) {
     /** The store, as the user named it or as the text said. */
     val store: String get() = storeName ?: senderLabel
 
     /** When it was bought: the user's date, else when the text arrived. */
     val boughtAt: Long get() = purchasedAt ?: timestamp
+}
+
+/** How a receipt came in. */
+object Origin {
+    /** A receipt link in a text message. */
+    const val SMS = "sms"
+
+    /** A receipt link shared to the app (WhatsApp, email, the browser): fetched like an SMS link. */
+    const val LINK = "link"
+
+    /** A PDF, picked in the app or shared to it. */
+    const val FILE = "file"
+
+    /** A photo, picked in the app or shared to it, saved as a one-page PDF. */
+    const val PHOTO = "photo"
+
+    /** A paper receipt, scanned with the camera. */
+    const val SCAN = "scan"
+
+    /** Whether it came with a link, rather than as a file the phone already has. */
+    fun hasLink(origin: String): Boolean = origin == SMS || origin == LINK
+
+    /** Whether its PDF is a picture of the paper we made or the scanner made, which may need turning the right way up. */
+    fun isPicture(origin: String): Boolean = origin == SCAN || origin == PHOTO
 }
 
 /** Where a receipt's amount came from. */
@@ -151,12 +177,16 @@ interface ReceiptDao {
     @Query("UPDATE captured_receipts SET pdfStatus = :status WHERE clientId = :clientId")
     suspend fun updatePdfStatus(clientId: String, status: String?)
 
-    /** Receipts the background catch-up may try: no PDF and no verdict yet, newest first. */
-    @Query("SELECT * FROM captured_receipts WHERE pdfPath IS NULL AND pdfStatus IS NULL ORDER BY timestamp DESC LIMIT :limit")
+    /** Receipts the background catch-up may try: a link, no PDF and no verdict yet, newest first. */
+    @Query("SELECT * FROM captured_receipts WHERE link != '' AND pdfPath IS NULL AND pdfStatus IS NULL ORDER BY timestamp DESC LIMIT :limit")
     suspend fun backfillCandidates(limit: Int): List<CapturedReceiptEntity>
 
     @Query("SELECT * FROM captured_receipts WHERE clientId = :clientId LIMIT 1")
     suspend fun getByClientId(clientId: String): CapturedReceiptEntity?
+
+    /** A receipt already saved for this link, by SMS or shared: so sharing it doesn't add a second. */
+    @Query("SELECT * FROM captured_receipts WHERE link = :link AND link != '' LIMIT 1")
+    suspend fun getByLink(link: String): CapturedReceiptEntity?
 
     /** An amount read from the receipt page: replaces any read amount, never one the user typed. */
     @Query(
@@ -271,7 +301,7 @@ abstract class AppDatabase : RoomDatabase() {
 }
 
 /** The database version. A bump needs a migration in [MIGRATIONS]. */
-const val DB_VERSION = 7
+const val DB_VERSION = 8
 
 /** Versions 1 and 2 were development builds with no migrations: the only ones an update may wipe. */
 val WIPED_VERSIONS = intArrayOf(1, 2)
@@ -281,7 +311,7 @@ val WIPED_VERSIONS = intArrayOf(1, 2)
  * doesn't reach [AppDatabase]'s version.
  */
 val MIGRATIONS: Array<androidx.room.migration.Migration>
-    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 
 /** v4 adds pdfStatus. A real migration, so an update never wipes the owner's receipts. */
 val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
@@ -320,5 +350,12 @@ val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
         db.execSQL("ALTER TABLE captured_receipts ADD COLUMN returnBy INTEGER")
         db.execSQL("ALTER TABLE captured_receipts ADD COLUMN warrantyUntil INTEGER")
         db.execSQL("ALTER TABLE captured_receipts ADD COLUMN notDuplicate INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+/** v8 keeps how each receipt came in, for files and scans that have no link. Every older receipt came by SMS. */
+val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN origin TEXT NOT NULL DEFAULT 'sms'")
     }
 }

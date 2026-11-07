@@ -45,6 +45,17 @@ import androidx.compose.ui.unit.dp
 import com.neonsheep.myreceipts.R
 import com.neonsheep.myreceipts.data.Category
 import com.neonsheep.myreceipts.data.TotalSource
+import com.neonsheep.myreceipts.data.Origin
+import com.neonsheep.myreceipts.data.ReceiptFiles
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import java.io.File
 import com.neonsheep.myreceipts.ui.components.CardTitle
 import com.neonsheep.myreceipts.ui.components.MerchantLogo
 import com.neonsheep.myreceipts.ui.components.SectionCard
@@ -65,9 +76,13 @@ fun ReceiptDetailScreen(
     storeCategory: Category = Category.guessFor(receipt.senderLabel),
     /** Saves the user's corrections and deadlines. Null: no editing (samples). */
     onEdit: (suspend (CapturedReceipt, ReceiptEdit) -> Unit)? = null,
+    /** Opens straight on the edit screen: a file just added, whose store the user names. */
+    startEditing: Boolean = false,
+    /** Turns a scan's or photo's pages a quarter turn clockwise; false when it couldn't. Null: not offered. */
+    onRotate: (suspend (CapturedReceipt) -> Boolean)? = null,
 ) {
     val scopeForEdit = rememberCoroutineScope()
-    var editing by remember(receipt.clientId) { mutableStateOf(false) }
+    var editing by remember(receipt.clientId) { mutableStateOf(startEditing) }
     if (editing && onEdit != null) {
         EditReceiptScreen(
             receipt = receipt,
@@ -149,10 +164,20 @@ fun ReceiptDetailScreen(
                     }
                 }
                 amountNote(receipt)?.let { note ->
-                    Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("amount_note"),
+                    )
                 }
                 Spacer(Modifier.height(14.dp))
                 DownloadPill(receipt, hasPdf = hasPdf)
+            }
+
+            // A scan or photo: the page itself, to see it's the right way up and turn it if not.
+            if (hasPdf && Origin.isPicture(receipt.origin) && receipt.pdfPath != null) {
+                PagePreview(receipt.pdfPath, onRotate = onRotate?.let { rotate -> suspend { rotate(receipt) } })
             }
 
             // The record as stored on the phone
@@ -170,10 +195,15 @@ fun ReceiptDetailScreen(
                     DetailRow(stringResource(R.string.label_warranty), formatDay(it), tag = "detail_warranty")
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
-                DetailRow(stringResource(R.string.label_received), formatTimestamp(receipt.textArrivedAt))
+                DetailRow(
+                    stringResource(if (receipt.isFile()) R.string.label_added else R.string.label_received),
+                    formatTimestamp(receipt.textArrivedAt),
+                )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                DetailRow(stringResource(R.string.label_link), receipt.link)
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                if (!receipt.isFile()) {
+                    DetailRow(stringResource(R.string.label_link), receipt.link)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
                 DetailRow(stringResource(R.string.label_id), receipt.clientId)
             }
 
@@ -194,9 +224,12 @@ fun ReceiptDetailScreen(
                     modifier = Modifier.testTag("sample_note"),
                 )
                 hasPdf -> {
-                    PrimaryButton(stringResource(R.string.open_pdf)) { openReceipt(context, receipt) }
-                    SecondaryButton(stringResource(R.string.open_in_browser)) { openInBrowser(context, receipt) }
+                    PrimaryButton(stringResource(R.string.open_pdf), tag = "open_pdf") { openReceipt(context, receipt) }
+                    if (!receipt.isFile()) {
+                        SecondaryButton(stringResource(R.string.open_in_browser)) { openInBrowser(context, receipt) }
+                    }
                 }
+                receipt.isFile() -> Unit
                 onGetPdf != null -> {
                     PrimaryButton(stringResource(R.string.get_pdf), loading = fetching, tag = "get_pdf", onClick = getPdf)
                     SecondaryButton(stringResource(R.string.open_in_browser)) { openInBrowser(context, receipt) }
@@ -205,7 +238,7 @@ fun ReceiptDetailScreen(
             }
             // Always offered: fetch the PDF again and replace the saved one, e.g. to swap a printout
             // for the store's own file.
-            if (hasPdf && onGetPdf != null && !receipt.isSample()) {
+            if (hasPdf && onGetPdf != null && !receipt.isSample() && !receipt.isFile()) {
                 TextButton(
                     onClick = getPdf,
                     enabled = !fetching,
@@ -246,9 +279,56 @@ fun ReceiptDetailScreen(
     }
 }
 
+/** The first page, drawn on the phone, with a button that turns it a quarter at a time. */
+@Composable
+private fun PagePreview(pdfPath: String, onRotate: (suspend () -> Boolean)?) {
+    val scope = rememberCoroutineScope()
+    // Bumped after each turn, so the page is drawn again from the new file.
+    var version by remember(pdfPath) { mutableIntStateOf(0) }
+    var turning by remember(pdfPath) { mutableStateOf(false) }
+    val page by produceState<ImageBitmap?>(null, pdfPath, version) {
+        value = ReceiptFiles.preview(File(pdfPath), PREVIEW_WIDTH_PX)?.asImageBitmap()
+    }
+    SectionCard {
+        Box(
+            Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 420.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            page?.let {
+                Image(
+                    it,
+                    contentDescription = stringResource(R.string.page_preview),
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxWidth().testTag("page_preview"),
+                )
+            } ?: CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = Green)
+        }
+        if (onRotate != null) {
+            TextButton(
+                onClick = {
+                    turning = true
+                    scope.launch {
+                        if (onRotate()) version++
+                        turning = false
+                    }
+                },
+                enabled = !turning,
+                modifier = Modifier.fillMaxWidth().testTag("rotate_page"),
+            ) {
+                Text("↻ " + stringResource(R.string.rotate_page), color = Green)
+            }
+        }
+    }
+}
+
+private const val PREVIEW_WIDTH_PX = 720
+
 /** Where the amount came from, when it was read rather than typed. */
 @Composable
 private fun amountNote(receipt: CapturedReceipt): String? = when {
+    // Looked for and not found, or a scan the phone can't read: ask for it.
+    receipt.totalAmount == null && (receipt.totalSource == TotalSource.NONE || receipt.isFile()) ->
+        stringResource(R.string.amount_not_read)
     receipt.totalAmount == null -> null
     receipt.totalSource == TotalSource.PAGE -> stringResource(R.string.amount_from_page)
     receipt.totalSource == TotalSource.PDF -> stringResource(R.string.amount_from_pdf)

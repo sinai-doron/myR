@@ -51,6 +51,7 @@ import java.time.YearMonth
 import com.neonsheep.myreceipts.data.ReceiptAmounts
 import com.neonsheep.myreceipts.data.CapturedReceiptEntity
 import com.neonsheep.myreceipts.data.PdfStatus
+import com.neonsheep.myreceipts.data.Origin
 import com.neonsheep.myreceipts.data.ReceiptLinks
 import com.neonsheep.myreceipts.data.SmsBackfill
 import kotlinx.coroutines.CoroutineScope
@@ -68,6 +69,15 @@ import com.neonsheep.myreceipts.ui.screens.VendorReceiptsScreen
 import com.neonsheep.myreceipts.ui.theme.MyReceiptsTheme
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import android.widget.Toast
+import androidx.activity.result.IntentSenderRequest
+import androidx.core.content.IntentCompat
+import androidx.lifecycle.lifecycleScope
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+import com.neonsheep.myreceipts.data.ReceiptFiles
+import com.neonsheep.myreceipts.ui.screens.AddReceiptSheet
 
 private val NOT_LOADED = Any()
 
@@ -80,8 +90,23 @@ class MainActivity : ComponentActivity() {
     // Our explanation of SMS use (SmsDisclosureScreen), which always comes before Android's prompt.
     private val disclosureOpen = mutableStateOf(false)
 
-    // A receipt to open, from a tapped reminder.
+    // A receipt to open, from a tapped reminder or one just added.
     private val openReceipt = mutableStateOf<String?>(null)
+
+    // A file just added: its receipt opens on the edit screen, for the store and, if unread, the amount.
+    private val editOnOpen = mutableStateOf<String?>(null)
+
+    // The "Add receipt" sheet.
+    private val addOpen = mutableStateOf(false)
+
+    private val pickFileLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importFile(uri, mimeType = null, origin = Origin.FILE)
+    }
+
+    private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        val pdf = GmsDocumentScanningResult.fromActivityResultIntent(result.data)?.pdf
+        if (result.resultCode == RESULT_OK && pdf != null) importFile(pdf.uri, "application/pdf", Origin.SCAN)
+    }
 
     // Reminders need nothing back: once allowed, the scheduled ones show; if not, they don't.
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -111,6 +136,8 @@ class MainActivity : ComponentActivity() {
         )
         smsGranted.value = hasSmsPermissions()
         openReceipt.value = intent?.getStringExtra(EXTRA_RECEIPT)
+        // Once: a rotation recreates the activity with the same intent, which must not add it again.
+        if (savedInstanceState == null) intent?.let(::handleShare)
         // First launch: explain before anything asks. After "Not now", the list's banner offers it.
         disclosureOpen.value = !smsGranted.value && !prefs().getBoolean(KEY_DISCLOSURE_SEEN, false)
         if (smsGranted.value) backfillInboxIfNeeded()
@@ -127,7 +154,9 @@ class MainActivity : ComponentActivity() {
         // closed, or copied over from an older install).
         CoroutineScope(Dispatchers.IO).launch {
             // Links captured before the filter knew they weren't receipts (marketing, unsubscribe).
+            // Only receipts that came as links: a file or a scan has none, and is never removed here.
             dao.getAllOnce()
+                .filter { Origin.hasLink(it.origin) }
                 .filterNot { ReceiptLinks.isReceipt(it.link) }
                 .forEach { r ->
                     Backend.pdfFile(this@MainActivity, r.clientId).delete()
@@ -167,8 +196,12 @@ class MainActivity : ComponentActivity() {
             var selectedReceiptId by remember { mutableStateOf<String?>(null) }
             val selectedReceipt = receipts.firstOrNull { it.clientId == selectedReceiptId }
             val scope = rememberCoroutineScope()
+            var editingReceiptId by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(openReceipt.value) {
                 openReceipt.value?.let { selectedReceiptId = it; openReceipt.value = null }
+            }
+            LaunchedEffect(editOnOpen.value) {
+                editOnOpen.value?.let { selectedReceiptId = it; editingReceiptId = it; editOnOpen.value = null }
             }
             MyReceiptsTheme {
                 val signedIn = user as? SignedInUser
@@ -201,12 +234,15 @@ class MainActivity : ComponentActivity() {
                     selectedReceipt != null -> {
                         ReceiptDetailScreen(
                             receipt = selectedReceipt,
-                            onBack = { selectedReceiptId = null },
+                            startEditing = editingReceiptId == selectedReceipt.clientId,
+                            onBack = { selectedReceiptId = null; editingReceiptId = null },
                             onGetPdf = { receipt -> getPdf(receipt) },
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
+                            onRotate = { receipt -> receipt.pdfPath?.let { ReceiptFiles.rotate(java.io.File(it)) } == true },
                             storeCategory = Category.fromName(storeCategories[selectedReceipt.senderLabel])
                                 ?: Category.guessFor(selectedReceipt.senderLabel),
                             onEdit = { receipt, e ->
+                                editingReceiptId = null
                                 dao.applyEdit(
                                     receipt.clientId, e.storeName, e.purchasedAt, e.category, e.returnBy, e.warrantyUntil,
                                     amount = e.amount, amountChanged = e.amountChanged,
@@ -269,6 +305,7 @@ class MainActivity : ComponentActivity() {
                                     duplicates = duplicates,
                                     onNotSame = { group -> scope.launch { dao.markNotDuplicate(group.map { it.clientId }) } },
                                     onMerge = { group -> scope.launch { merge(group) } },
+                                    onAddReceipt = { addOpen.value = true },
                                     onSignOut = {
                                         scope.launch {
                                             auth.signOut()
@@ -301,6 +338,16 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             BottomBar(selected = tab, onSelect = { tab = it })
+                        }
+                        if (addOpen.value) {
+                            AddReceiptSheet(
+                                onScan = { addOpen.value = false; startScan() },
+                                onPickFile = {
+                                    addOpen.value = false
+                                    pickFileLauncher.launch(arrayOf("application/pdf", "image/*"))
+                                },
+                                onDismiss = { addOpen.value = false },
+                            )
                         }
                     }
                 }
@@ -371,6 +418,61 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.getStringExtra(EXTRA_RECEIPT)?.let { openReceipt.value = it }
+        handleShare(intent)
+    }
+
+    /** Something shared to the app from Android's Share menu: a PDF, a photo, or text with a receipt link. */
+    private fun handleShare(intent: Intent) {
+        if (intent.action != Intent.ACTION_SEND) return
+        val stream = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+        when {
+            stream != null -> importFile(stream, intent.type, Origin.FILE)
+            !text.isNullOrBlank() -> lifecycleScope.launch {
+                showImport(ReceiptFiles.importText(this@MainActivity, AppDatabase.getInstance(this@MainActivity).receiptDao(), text))
+            }
+        }
+    }
+
+    /** A PDF or photo, saved on the phone as a receipt; it opens on the edit screen. */
+    private fun importFile(uri: Uri, mimeType: String?, origin: String) {
+        // Read now: a shared file's permission lasts only while this activity does.
+        lifecycleScope.launch {
+            val dao = AppDatabase.getInstance(this@MainActivity).receiptDao()
+            showImport(ReceiptFiles.importFile(this@MainActivity, dao, uri, mimeType, origin))
+        }
+    }
+
+    private fun showImport(result: ReceiptFiles.Result) {
+        val message = when (result) {
+            is ReceiptFiles.Result.Added -> {
+                if (result.isFile) editOnOpen.value = result.clientId else openReceipt.value = result.clientId
+                if (result.isFile) null else R.string.import_link_saved
+            }
+            is ReceiptFiles.Result.AlreadySaved -> {
+                openReceipt.value = result.clientId
+                R.string.import_already_saved
+            }
+            ReceiptFiles.Result.NotAReceipt -> R.string.import_not_receipt
+            ReceiptFiles.Result.TooBig -> R.string.import_too_big
+            ReceiptFiles.Result.Unreadable -> R.string.import_unreadable
+            ReceiptFiles.Result.NoLink -> R.string.import_no_link
+            ReceiptFiles.Result.UnknownSite -> R.string.import_unknown_site
+        }
+        message?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
+    }
+
+    /** Google's document scanner: finds the edges, straightens, takes several pages, gives one PDF. */
+    private fun startScan() {
+        val options = GmsDocumentScannerOptions.Builder()
+            .setGalleryImportAllowed(true)
+            .setPageLimit(SCAN_PAGE_LIMIT)
+            .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_PDF)
+            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+            .build()
+        GmsDocumentScanning.getClient(options).getStartScanIntent(this)
+            .addOnSuccessListener { sender -> scanLauncher.launch(IntentSenderRequest.Builder(sender).build()) }
+            .addOnFailureListener { Toast.makeText(this, R.string.scanner_unavailable, Toast.LENGTH_LONG).show() }
     }
 
     /** Android's notification prompt, when a deadline is set and reminders can't show yet. */
@@ -421,6 +523,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** The receipt a reminder opens. */
         const val EXTRA_RECEIPT = "com.neonsheep.myreceipts.RECEIPT"
+        /** A long receipt is a few pages; more is not a receipt. */
+        private const val SCAN_PAGE_LIMIT = 10
         private val SMS_PERMISSIONS = arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
         private const val PREFS = "sms_disclosure"
         private const val KEY_DISCLOSURE_SEEN = "seen"
@@ -443,4 +547,5 @@ fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     notDuplicate = notDuplicate,
     textSender = senderLabel,
     textArrivedAt = timestamp,
+    origin = origin,
 )
