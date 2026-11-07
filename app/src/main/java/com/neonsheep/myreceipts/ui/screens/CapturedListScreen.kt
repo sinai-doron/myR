@@ -53,6 +53,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -142,6 +144,8 @@ fun HomeScreen(
     duplicates: List<List<CapturedReceipt>> = emptyList(),
     onNotSame: (List<CapturedReceipt>) -> Unit = {},
     onMerge: (List<CapturedReceipt>) -> Unit = {},
+    /** Opens the ways to add a receipt by hand (scan, file). */
+    onAddReceipt: () -> Unit = {},
 ) {
     var showAccount by remember { mutableStateOf(false) }
     val monthName = remember { SimpleDateFormat("LLLL", Locale.getDefault()).format(Date()) }
@@ -174,6 +178,9 @@ fun HomeScreen(
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onBackground,
                 )
+            }
+            IconButton(onClick = onAddReceipt, modifier = Modifier.testTag("add_receipt")) {
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_receipt), tint = Green)
             }
             if (accountEmail != null) {
                 AccountInitial(
@@ -220,7 +227,7 @@ fun HomeScreen(
         }
 
         if (receipts.isEmpty()) {
-            EmptyState(onAddSamples)
+            EmptyState(onAddSamples, onAddReceipt)
         } else {
             RecentReceipts(receipts, categoryOf, onOpenReceipt, onOpenStores)
         }
@@ -488,7 +495,7 @@ private fun SamplesBanner(onRemove: () -> Unit) {
 }
 
 @Composable
-private fun EmptyState(onAddSamples: () -> Unit) {
+private fun EmptyState(onAddSamples: () -> Unit, onAddReceipt: () -> Unit) {
     SectionCard(padding = 28.dp) {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
@@ -518,6 +525,9 @@ private fun EmptyState(onAddSamples: () -> Unit) {
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(12.dp))
+            TextButton(onClick = onAddReceipt, modifier = Modifier.testTag("empty_add_receipt")) {
+                Text(stringResource(R.string.add_receipt), color = Green)
+            }
             TextButton(onClick = onAddSamples, modifier = Modifier.testTag("add_samples")) {
                 Text(stringResource(R.string.try_samples), color = Green)
             }
@@ -565,6 +575,9 @@ internal const val AUTO_DOWNLOAD_WINDOW_MS = 30L * 24 * 60 * 60 * 1000
 
 /** A made-up receipt from "Try with sample receipts". */
 internal fun CapturedReceipt.isSample(): Boolean = SampleReceipts.isSample(clientId)
+
+/** A PDF or scan added by hand: it has no link to fetch or open. */
+internal fun CapturedReceipt.isFile(): Boolean = link.isEmpty()
 
 internal fun CapturedReceipt.hasPdf(): Boolean = pdfPath?.let { File(it).exists() } == true
 internal fun CapturedReceipt.isPastDownloadWindow(): Boolean =

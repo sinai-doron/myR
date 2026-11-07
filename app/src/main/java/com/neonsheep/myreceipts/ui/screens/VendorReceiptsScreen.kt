@@ -202,5 +202,6 @@ internal fun openReceipt(context: Context, receipt: CapturedReceipt) {
 }
 
 internal fun openInBrowser(context: Context, receipt: CapturedReceipt) {
+    if (receipt.isFile()) return
     context.startActivity(Intent(Intent.ACTION_VIEW, receipt.link.toUri()))
 }

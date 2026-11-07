@@ -215,4 +215,43 @@ class MigrationTest {
             room.close()
         }
     }
+
+    @Test
+    fun v7ToV8_everyOldReceiptCameBySms() = runBlocking {
+        context.deleteDatabase(name)
+        // The v7 schema exactly as Room created it.
+        SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name), null).use { db ->
+            db.execSQL(
+                "CREATE TABLE `captured_receipts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`link` TEXT NOT NULL, `senderLabel` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, " +
+                    "`clientId` TEXT NOT NULL, `capturedAt` INTEGER NOT NULL, `totalAmount` REAL, `pdfPath` TEXT, " +
+                    "`pdfStatus` TEXT, `totalSource` TEXT, `storeName` TEXT, `purchasedAt` INTEGER, `category` TEXT, " +
+                    "`returnBy` INTEGER, `warrantyUntil` INTEGER, `notDuplicate` INTEGER NOT NULL DEFAULT 0)",
+            )
+            db.execSQL("CREATE UNIQUE INDEX `index_captured_receipts_clientId` ON `captured_receipts` (`clientId`)")
+            db.execSQL(
+                "CREATE TABLE `store_categories` (`senderLabel` TEXT NOT NULL, `category` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`senderLabel`))",
+            )
+            db.execSQL("CREATE TABLE `budgets` (`category` TEXT NOT NULL, `monthlyLimit` REAL NOT NULL, PRIMARY KEY(`category`))")
+            db.execSQL(
+                "INSERT INTO captured_receipts (link, senderLabel, timestamp, clientId, capturedAt, totalAmount, storeName, returnBy) " +
+                    "VALUES ('https://wee.ai/r/a', 'IKEA', 1000, 'c-1', 2, 730.0, 'IKEA Rishon', 5000)",
+            )
+            db.version = 7
+        }
+
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(*MIGRATIONS)
+            .build() // no destructive fallback: a failing migration must fail this test
+        try {
+            val r = room.receiptDao().getAllOnce().single()
+            assertEquals(Origin.SMS, r.origin)
+            assertEquals("IKEA Rishon", r.store)
+            assertEquals(5000L, r.returnBy)
+            assertEquals(730.0, r.totalAmount!!, 0.001)
+        } finally {
+            room.close()
+        }
+    }
 }

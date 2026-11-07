@@ -182,4 +182,22 @@
     <string name="same_receipt_body">%1$s, %2$s, came in more than once: %3$s.</string>
     <string name="same_receipt_no">Not the same</string>
     <string name="same_receipt_merge">Merge</string>
+    <!-- More ways in: a file, a scan, or Share from another app -->
+    <string name="add_receipt">Add receipt</string>
+    <string name="add_scan">Scan a paper receipt</string>
+    <string name="add_scan_note">The camera straightens it and saves a PDF, on your phone</string>
+    <string name="add_file">Choose a PDF or photo</string>
+    <string name="add_file_note">Or use Share in WhatsApp, email or the browser</string>
+    <string name="store_uploaded">Uploaded receipt</string>
+    <string name="store_scanned">Scanned receipt</string>
+    <string name="label_added">Added</string>
+    <string name="amount_not_read">We couldn\'t read the amount. Add it so it counts in your spending.</string>
+    <string name="import_link_saved">Receipt saved. Getting its PDF…</string>
+    <string name="import_already_saved">That receipt is already saved</string>
+    <string name="import_not_receipt">Only PDFs and photos can be added as receipts</string>
+    <string name="import_too_big">That file is too big for a receipt (over 25 MB)</string>
+    <string name="import_unreadable">That file couldn\'t be opened</string>
+    <string name="import_no_link">There\'s no receipt link in what you shared</string>
+    <string name="import_unknown_site">That link isn\'t from a receipt site we know yet</string>
+    <string name="scanner_unavailable">The scanner isn\'t available on this phone</string>
 </resources>

@@ -1,6 +1,6 @@
 # My Receipts
 
-Android app that captures receipt SMS, keeps the links on the device, downloads each receipt as a PDF, and shows them grouped by vendor. A NestJS backend (local only) can render a receipt URL to PDF and extract line items with Gemini. See `docs/HANDOVER.md` for status and `CLAUDE.md` for the short orientation.
+Android app that captures receipt SMS, keeps the links on the device, takes receipts added by hand (a PDF or photo, Android's Share menu, or the camera's document scanner), downloads each receipt as a PDF, and shows them grouped by vendor. A NestJS backend (local only) can render a receipt URL to PDF and extract line items with Gemini. See `docs/HANDOVER.md` for status and `CLAUDE.md` for the short orientation.
 
 ## Prerequisites (macOS shown; any OS works)
 
@@ -57,6 +57,8 @@ signed with; a lost upload key can be reset through Play Console.
 
 - Physical: Pixel 10, paired over wireless debugging (Developer options → Wireless debugging → Pair device with pairing code, then `adb pair <ip>:<port>` and `adb connect <ip>:<port>`). Find yours with `adb devices -l`.
 - Emulator: a Pixel 10 AVD on API 37 (e.g. `gym_pixel10`). `emu sms send` puts messages in the inbox; the inbox backfill picks them up on launch, but the inbox backfill works on the emulator.
+- Sharing a file to the app from the shell: `am start -a android.intent.action.SEND` can't grant access to a MediaStore file the app hasn't opened, so test Share from the Files app (long-press → Share → My Receipts). Shared text works from the shell: `adb shell am start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'<message with a receipt link>'" -n com.neonsheep.myreceipts/.MainActivity`.
+- The document scanner is a Play services module downloaded on first use. On the API 37 emulator the download fails ("Something went wrong"), so scanning is tested on the Pixel.
 
 ## Sign-in and the backend
 

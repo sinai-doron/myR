@@ -20,6 +20,7 @@ tink = "1.24.0"
 okhttp = "5.5.1"
 fragment = "1.9.1"
 coroutines = "1.11.0"
+mlkit-document-scanner = "16.0.0"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
@@ -53,6 +54,7 @@ tink-android = { group = "com.google.crypto.tink", name = "tink-android", versio
 fragment = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver3", version.ref = "okhttp" }
+mlkit-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "mlkit-document-scanner" }
 coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
 [plugins]
