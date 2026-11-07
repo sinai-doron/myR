@@ -227,4 +227,16 @@
     <string name="import_damaged">לא הצלחנו לקרוא את הקובץ. ייתכן שהוא פגום.</string>
     <string name="reports_title">שליחת דיווחי תקלות</string>
     <string name="reports_note">כשהאפליקציה קורסת, כשאתר קבלות עוד לא נתמך או כשאי אפשר לקרוא סכום, היא מודיעה לשרת שלנו: סוג השגיאה, או שם האתר ושם השולח. אף פעם לא קישור, הודעה או סכום.</string>
+    <string name="ai_read">קריאת הסכום עם AI</string>
+    <string name="ai_reading">קורא…</string>
+    <string name="ai_confirm_title">לקרוא את הקבלה עם AI?</string>
+    <string name="ai_confirm_body">הקבלה נשלחת לשרת שלנו, ששולח אותה ל-Gemini, ה-AI של Google, באיחוד האירופי, כדי לקרוא את שם החנות, התאריך והסכום ששולם. אף אחד מהם לא שומר אותה. כל קריאה משתמשת בחלק קטן מהמכסה החודשית שלך ל-AI.</string>
+    <string name="ai_confirm_ok">לקרוא</string>
+    <string name="ai_check">נקרא על ידי AI. כדאי לבדוק שזה תואם לקבלה, ואז לשמור.</string>
+    <string name="ai_not_found">ה-AI לא מצא סכום בשקלים בקבלה הזו. אפשר להקליד אותו.</string>
+    <string name="ai_near_limit">השתמשת ברוב מכסת ה-AI של החודש.</string>
+    <string name="ai_budget_used">מכסת ה-AI של החודש נוצלה. היא מתחדשת ב-1 לחודש.</string>
+    <string name="ai_unavailable">קריאה עם AI לא זמינה כרגע. אפשר לנסות שוב מאוחר יותר.</string>
+    <string name="ai_too_large">הקבלה גדולה מדי לקריאה עם AI.</string>
+    <string name="ai_failed">לא הצלחנו לקרוא את הקבלה. אפשר לנסות שוב מאוחר יותר.</string>
 </resources>

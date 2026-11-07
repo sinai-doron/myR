@@ -1,5 +1,6 @@
 package com.neonsheep.myreceipts
 
+import com.neonsheep.myreceipts.ui.screens.AiRead
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -289,6 +290,7 @@ class MainActivity : ComponentActivity() {
                             onGetPdf = { receipt -> getPdf(receipt) },
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
                             onRotate = { receipt -> receipt.pdfPath?.let { ReceiptFiles.rotate(java.io.File(it)) } == true },
+                            onReadWithAi = { receipt -> readWithAi(receipt) },
                             storeCategory = Category.fromName(storeCategories[selectedReceipt.senderLabel])
                                 ?: Category.guessFor(selectedReceipt.senderLabel),
                             onEdit = { receipt, e ->
@@ -557,6 +559,32 @@ class MainActivity : ComponentActivity() {
         val was = smsGranted.value
         smsGranted.value = hasSmsPermissions()
         if (!was && smsGranted.value) backfillInboxIfNeeded()
+    }
+
+    /** Has the backend's AI read a receipt's PDF, and says what came of it on the screen. */
+    private suspend fun readWithAi(receipt: CapturedReceipt): AiRead {
+        val pdf = receipt.pdfPath?.let { java.io.File(it) }?.takeIf { it.isFile }
+            ?: return AiRead.Failed(listOf(R.string.ai_failed))
+        return Backend.readReceipt(this, pdf).fold(
+            onSuccess = { read ->
+                val near = if (read.budget.nearLimit) listOf(R.string.ai_near_limit) else emptyList()
+                read.shekels?.let { AiRead.Found(it, near) }
+                    ?: AiRead.NotFound(listOf(R.string.ai_not_found) + near)
+            },
+            onFailure = { error ->
+                AiRead.Failed(
+                    listOf(
+                        when {
+                            error === BackendException.Unauthorized -> R.string.error_signed_out
+                            error === BackendException.AiBudgetUsed -> R.string.ai_budget_used
+                            error === BackendException.AiUnavailable -> R.string.ai_unavailable
+                            error is BackendException.Http && error.code == 413 -> R.string.ai_too_large
+                            else -> R.string.ai_failed
+                        },
+                    ),
+                )
+            },
+        )
     }
 
     private fun prefs() = getSharedPreferences(PREFS, MODE_PRIVATE)

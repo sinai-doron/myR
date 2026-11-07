@@ -80,6 +80,8 @@ fun ReceiptDetailScreen(
     startEditing: Boolean = false,
     /** Turns a scan's or photo's pages a quarter turn clockwise; false when it couldn't. Null: not offered. */
     onRotate: (suspend (CapturedReceipt) -> Boolean)? = null,
+    /** Has the backend's AI read the receipt's PDF, after the user agrees. Null: not offered. */
+    onReadWithAi: (suspend (CapturedReceipt) -> AiRead)? = null,
 ) {
     val scopeForEdit = rememberCoroutineScope()
     var editing by remember(receipt.clientId) { mutableStateOf(startEditing) }
@@ -102,6 +104,11 @@ fun ReceiptDetailScreen(
     var fetching by remember(receipt.clientId) { mutableStateOf(false) }
     var fetchError by remember(receipt.clientId) { mutableStateOf<String?>(null) }
     var editingAmount by remember(receipt.clientId) { mutableStateOf(false) }
+    var askingAi by remember(receipt.clientId) { mutableStateOf(false) }
+    var readingAi by remember(receipt.clientId) { mutableStateOf(false) }
+    // What the AI read, offered in the amount dialog for the user to check and save.
+    var aiAmount by remember(receipt.clientId) { mutableStateOf<Double?>(null) }
+    var aiMessages by remember(receipt.clientId) { mutableStateOf<List<Int>>(emptyList()) }
 
     Column(
         modifier = Modifier
@@ -162,6 +169,30 @@ fun ReceiptDetailScreen(
                             Text(stringResource(R.string.edit), color = Green)
                         }
                     }
+                }
+                // No amount and a PDF to read it from: the AI can, if the user asks.
+                if (onReadWithAi != null && receipt.totalAmount == null && hasPdf && !receipt.isSample()) {
+                    TextButton(
+                        onClick = { askingAi = true },
+                        enabled = !readingAi,
+                        modifier = Modifier.testTag("read_with_ai"),
+                    ) {
+                        if (readingAi) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Green)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.ai_reading), color = Green)
+                        } else {
+                            Text(stringResource(R.string.ai_read), color = Green)
+                        }
+                    }
+                }
+                aiMessages.forEach { message ->
+                    Text(
+                        stringResource(message),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("ai_message"),
+                    )
                 }
                 amountNote(receipt)?.let { note ->
                     Text(
@@ -259,11 +290,45 @@ fun ReceiptDetailScreen(
             }
             if (editingAmount && onSetAmount != null) {
                 AmountDialog(
-                    initial = receipt.totalAmount,
-                    onDismiss = { editingAmount = false },
+                    initial = aiAmount ?: receipt.totalAmount,
+                    note = if (aiAmount != null) stringResource(R.string.ai_check) else null,
+                    onDismiss = {
+                        editingAmount = false
+                        aiAmount = null
+                    },
                     onSave = { amount ->
                         editingAmount = false
+                        aiAmount = null
                         scope.launch { onSetAmount(receipt, amount) }
+                    },
+                )
+            }
+            if (askingAi && onReadWithAi != null) {
+                AlertDialog(
+                    onDismissRequest = { askingAi = false },
+                    title = { Text(stringResource(R.string.ai_confirm_title)) },
+                    text = { Text(stringResource(R.string.ai_confirm_body)) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                askingAi = false
+                                readingAi = true
+                                aiMessages = emptyList()
+                                scope.launch {
+                                    val read = onReadWithAi(receipt)
+                                    readingAi = false
+                                    aiMessages = read.messages
+                                    if (read is AiRead.Found) {
+                                        aiAmount = read.amount
+                                        editingAmount = true
+                                    }
+                                }
+                            },
+                            modifier = Modifier.testTag("ai_confirm"),
+                        ) { Text(stringResource(R.string.ai_confirm_ok)) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { askingAi = false }) { Text(stringResource(R.string.cancel)) }
                     },
                 )
             }
@@ -344,22 +409,27 @@ internal fun parseTypedAmount(text: String): Result<Double?> {
 }
 
 @Composable
-private fun AmountDialog(initial: Double?, onDismiss: () -> Unit, onSave: (Double?) -> Unit) {
+private fun AmountDialog(initial: Double?, note: String? = null, onDismiss: () -> Unit, onSave: (Double?) -> Unit) {
     var text by remember { mutableStateOf(initial?.let { "%.2f".format(java.util.Locale.US, it) } ?: "") }
     val parsed = parseTypedAmount(text)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.amount_paid)) },
         text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("₪") },
-                singleLine = true,
-                isError = parsed.isFailure,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.testTag("amount_field"),
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (note != null) {
+                    Text(note, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("amount_ai_note"))
+                }
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("₪") },
+                    singleLine = true,
+                    isError = parsed.isFailure,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.testTag("amount_field"),
+                )
+            }
         },
         confirmButton = {
             TextButton(
@@ -426,4 +496,19 @@ private fun DetailRow(label: String, value: String, tag: String? = null) {
         Spacer(Modifier.height(2.dp))
         Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
+}
+
+/** What reading a receipt with AI came to, as the screen shows it. */
+sealed class AiRead {
+    /** Messages to show under the amount: string resources. */
+    abstract val messages: List<Int>
+
+    /** An amount in shekels, offered for the user to check and save. */
+    data class Found(val amount: Double, override val messages: List<Int>) : AiRead()
+
+    /** Read, but no amount in shekels (or not a receipt). */
+    data class NotFound(override val messages: List<Int>) : AiRead()
+
+    /** Not read: signed out, allowance used, unavailable, too large, or failed. */
+    data class Failed(override val messages: List<Int>) : AiRead()
 }
