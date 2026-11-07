@@ -80,6 +80,8 @@ import com.neonsheep.myreceipts.data.ReceiptFiles
 import com.neonsheep.myreceipts.data.ReceiptArchive
 import com.neonsheep.myreceipts.data.ReceiptBackup
 import com.neonsheep.myreceipts.ui.screens.SettingsScreen
+import com.neonsheep.myreceipts.ui.screens.ReportsSetting
+import com.neonsheep.myreceipts.data.FailureReports
 import com.neonsheep.myreceipts.ui.screens.AddReceiptSheet
 
 private val NOT_LOADED = Any()
@@ -106,6 +108,7 @@ class MainActivity : ComponentActivity() {
     private val settingsOpen = mutableStateOf(false)
     private val backupStatus = mutableStateOf<String?>(null)
     private val backupBusy = mutableStateOf(false)
+    private val reportsOn = mutableStateOf(true)
 
     private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) runBackup(R.string.export_failed) {
@@ -160,6 +163,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
         smsGranted.value = hasSmsPermissions()
+        reportsOn.value = FailureReports.enabled(this)
         openReceipt.value = intent?.getStringExtra(EXTRA_RECEIPT)
         // Once: a rotation recreates the activity with the same intent, which must not add it again.
         if (savedInstanceState == null) intent?.let(::handleShare)
@@ -270,6 +274,12 @@ class MainActivity : ComponentActivity() {
                         onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
                         status = backupStatus.value,
                         busy = backupBusy.value,
+                        extra = {
+                            ReportsSetting(reportsOn.value) { on ->
+                                FailureReports.setEnabled(this@MainActivity, on)
+                                reportsOn.value = on
+                            }
+                        },
                     )
                     selectedReceipt != null -> {
                         ReceiptDetailScreen(

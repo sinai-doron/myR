@@ -27,5 +27,7 @@ object ReceiptAmounts {
         val text = withContext(Dispatchers.IO) { PdfText.read(file) } ?: return
         val amount = ReceiptTotals.fromText(text)
         dao.setPdfTotal(clientId, amount, if (amount != null) TotalSource.PDF else TotalSource.NONE)
+        // A receipt site whose PDFs we can't read the amount from: its name, to fix the reader.
+        if (amount == null) dao.getByClientId(clientId)?.takeIf { it.link.isNotEmpty() }?.let { FailureReports.totalNotFound(it.link) }
     }
 }

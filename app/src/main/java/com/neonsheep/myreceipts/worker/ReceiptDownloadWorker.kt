@@ -18,6 +18,7 @@ import com.neonsheep.myreceipts.auth.Backend
 import com.neonsheep.myreceipts.data.AppDatabase
 import com.neonsheep.myreceipts.data.ReceiptAmounts
 import com.neonsheep.myreceipts.data.PdfStatus
+import com.neonsheep.myreceipts.data.FailureReports
 import com.neonsheep.myreceipts.net.BackendException
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -54,6 +55,8 @@ class ReceiptDownloadWorker(
             // "Get PDF again" fetches the store's own PDF once the store is added.
             is BackendException.Http -> if (e.code == 410 || e.code == 400) {
                 dao.updatePdfStatus(clientId, if (e.code == 410) PdfStatus.GONE else PdfStatus.UNSUPPORTED)
+                // A site to add: its name and the sender's, never the link.
+                if (e.code == 400) dao.getByClientId(clientId)?.let { FailureReports.unsupportedSite(url, it.senderLabel) }
                 Log.w(TAG, "No PDF for $clientId from the backend: HTTP ${e.code}")
                 return Result.success()
             }
