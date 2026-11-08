@@ -83,6 +83,11 @@ fun ReceiptDetailScreen(
     onEdit: (suspend (CapturedReceipt, ReceiptEdit) -> Unit)? = null,
     /** Opens straight on the edit screen: a file just added, whose store the user names. */
     startEditing: Boolean = false,
+    /**
+     * A file just added: asks first whether to read it with AI. Reading it shows what was read for
+     * the user to keep; saying no opens the edit screen, as [startEditing] does.
+     */
+    askAiFirst: Boolean = false,
     /** Turns a scan's or photo's pages a quarter turn clockwise; false when it couldn't. Null: not offered. */
     onRotate: (suspend (CapturedReceipt) -> Boolean)? = null,
     /** Has the backend's AI read the receipt's PDF, after the user agrees. Null: not offered. */
@@ -93,7 +98,11 @@ fun ReceiptDetailScreen(
     items: List<ReceiptArchive.Item> = emptyList(),
 ) {
     val scopeForEdit = rememberCoroutineScope()
-    var editing by remember(receipt.clientId) { mutableStateOf(startEditing) }
+    val hasPdf = receipt.hasPdf()
+    val aiOffered = onReadWithAi != null && onApplyAi != null && hasPdf && !receipt.isSample()
+    // Just added, and the AI question not yet answered.
+    var justAdded by remember(receipt.clientId) { mutableStateOf(askAiFirst && aiOffered) }
+    var editing by remember(receipt.clientId) { mutableStateOf((startEditing || askAiFirst) && !justAdded) }
     if (editing && onEdit != null) {
         EditReceiptScreen(
             receipt = receipt,
@@ -108,12 +117,11 @@ fun ReceiptDetailScreen(
     }
     BackHandler(onBack = onBack)
     val context = LocalContext.current
-    val hasPdf = receipt.hasPdf()
     val scope = rememberCoroutineScope()
     var fetching by remember(receipt.clientId) { mutableStateOf(false) }
     var fetchError by remember(receipt.clientId) { mutableStateOf<String?>(null) }
     var editingAmount by remember(receipt.clientId) { mutableStateOf(false) }
-    var askingAi by remember(receipt.clientId) { mutableStateOf(false) }
+    var askingAi by remember(receipt.clientId) { mutableStateOf(justAdded) }
     var readingAi by remember(receipt.clientId) { mutableStateOf(false) }
     // What the AI read, shown field by field for the user to keep or not.
     var aiDetails by remember(receipt.clientId) { mutableStateOf<AiDetails?>(null) }
@@ -180,7 +188,7 @@ fun ReceiptDetailScreen(
                     }
                 }
                 // A PDF to read from: the AI can read its details, if the user asks.
-                if (onReadWithAi != null && onApplyAi != null && hasPdf && !receipt.isSample()) {
+                if (aiOffered) {
                     TextButton(
                         onClick = { askingAi = true },
                         enabled = !readingAi,
@@ -338,14 +346,23 @@ fun ReceiptDetailScreen(
                 )
             }
             if (askingAi && onReadWithAi != null) {
+                // No: a file just added goes on to the edit screen, to name its store and amount.
+                val notNow = {
+                    askingAi = false
+                    if (justAdded) {
+                        justAdded = false
+                        if (onEdit != null) editing = true
+                    }
+                }
                 AlertDialog(
-                    onDismissRequest = { askingAi = false },
+                    onDismissRequest = notNow,
                     title = { Text(stringResource(R.string.ai_confirm_title)) },
                     text = { Text(stringResource(R.string.ai_confirm_body)) },
                     confirmButton = {
                         TextButton(
                             onClick = {
                                 askingAi = false
+                                justAdded = false
                                 readingAi = true
                                 aiMessages = emptyList()
                                 scope.launch {
@@ -365,7 +382,9 @@ fun ReceiptDetailScreen(
                         ) { Text(stringResource(R.string.ai_confirm_ok)) }
                     },
                     dismissButton = {
-                        TextButton(onClick = { askingAi = false }) { Text(stringResource(R.string.cancel)) }
+                        TextButton(onClick = notNow, modifier = Modifier.testTag("ai_not_now")) {
+                            Text(stringResource(if (justAdded) R.string.ai_not_now else R.string.cancel))
+                        }
                     },
                 )
             }

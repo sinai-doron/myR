@@ -237,11 +237,18 @@ class MainActivity : ComponentActivity() {
             }.collectAsState(initial = emptyList())
             val scope = rememberCoroutineScope()
             var editingReceiptId by remember { mutableStateOf<String?>(null) }
+            // A file just added, opened on the question whether to read it with AI.
+            var askAiFor by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(openReceipt.value) {
                 openReceipt.value?.let { selectedReceiptId = it; openReceipt.value = null }
             }
             LaunchedEffect(editOnOpen.value) {
-                editOnOpen.value?.let { selectedReceiptId = it; editingReceiptId = it; editOnOpen.value = null }
+                editOnOpen.value?.let {
+                    selectedReceiptId = it
+                    // Signed in, it asks about AI first and opens the edit screen on a no.
+                    if (user is SignedInUser) askAiFor = it else editingReceiptId = it
+                    editOnOpen.value = null
+                }
             }
             MyReceiptsTheme {
                 val signedIn = user as? SignedInUser
@@ -296,7 +303,8 @@ class MainActivity : ComponentActivity() {
                         ReceiptDetailScreen(
                             receipt = selectedReceipt,
                             startEditing = editingReceiptId == selectedReceipt.clientId,
-                            onBack = { selectedReceiptId = null; editingReceiptId = null },
+                            askAiFirst = askAiFor == selectedReceipt.clientId,
+                            onBack = { selectedReceiptId = null; editingReceiptId = null; askAiFor = null },
                             onGetPdf = { receipt -> getPdf(receipt) },
                             onSetAmount = { receipt, amount -> dao.setUserTotal(receipt.clientId, amount) },
                             onRotate = { receipt -> receipt.pdfPath?.let { ReceiptFiles.rotate(java.io.File(it)) } == true },
@@ -342,6 +350,7 @@ class MainActivity : ComponentActivity() {
                                 ?: Category.guessFor(selectedReceipt.senderLabel),
                             onEdit = { receipt, e ->
                                 editingReceiptId = null
+                                askAiFor = null
                                 dao.applyEdit(
                                     receipt.clientId, e.storeName, e.purchasedAt, e.category, e.returnBy, e.warrantyUntil,
                                     amount = e.amount, amountChanged = e.amountChanged,
