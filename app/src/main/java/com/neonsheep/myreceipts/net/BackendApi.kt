@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -102,6 +103,19 @@ class BackendApi(
                 }
             }
         }
+    }
+
+    /**
+     * What one unit of [currency] was worth in shekels on [date] (YYYY-MM-DD), from the ECB through the
+     * backend (GET /api/receipts/rate). Only the currency and the date are sent.
+     */
+    suspend fun rate(accessToken: String, currency: String, date: String): ExchangeRate {
+        val url = (base + "/api/receipts/rate").toHttpUrl().newBuilder()
+            .addQueryParameter("currency", currency)
+            .addQueryParameter("date", date)
+            .build()
+        val request = Request.Builder().url(url).header("Authorization", "Bearer $accessToken").get().build()
+        return call(request) { json.decodeFromString<ExchangeRate>(it.body.string()) }
     }
 
     private fun aiCode(body: String): String? =
@@ -211,6 +225,10 @@ class BackendApi(
         /** The amount in shekels, when it read one: another currency isn't one to record. */
         val shekels: Double? get() = total?.takeIf { isReceipt && currency == "ILS" && it > 0 }
     }
+
+    /** Shekels for one unit of [currency], on [rateDate]: the ECB's rate for that day or the working day before. */
+    @Serializable
+    data class ExchangeRate(val currency: String, val ilsPerUnit: Double, val rateDate: String, val source: String = "ECB")
 
     object Totals {
         private val PLAIN_AMOUNT = Regex("""\d{1,7}(\.\d{1,2})?""")

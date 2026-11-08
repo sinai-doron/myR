@@ -49,6 +49,13 @@ class ReceiptArchiveTest {
         capturedAt = 2_000,
         origin = Origin.SCAN,
         totalSource = TotalSource.NONE,
+        // From abroad: its zloty, and the shekels it was converted to.
+        currency = "PLN",
+        originalTotal = 123.45,
+        totalAmount = 98.37,
+        ilsRate = 0.796877,
+        rateDate = "2026-11-02",
+        vatAmount = 23.08,
     )
 
     @Test
@@ -115,6 +122,10 @@ class ReceiptArchiveTest {
         assertFalse(ReceiptArchive.holdsUp(sms.copy(invoiceNumber = "9".repeat(41))))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(vatAmount = -1.0)))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(storePhone = "call us")))
+        assertFalse(ReceiptArchive.holdsUp(scan.copy(currency = "zł")))
+        assertFalse(ReceiptArchive.holdsUp(scan.copy(originalTotal = -1.0)))
+        assertFalse(ReceiptArchive.holdsUp(scan.copy(ilsRate = 0.0)))
+        assertFalse(ReceiptArchive.holdsUp(scan.copy(rateDate = "yesterday")))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(items = listOf(ReceiptArchive.Item("")))))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(items = listOf(ReceiptArchive.Item("x", unit = "box")))))
         assertFalse(ReceiptArchive.holdsUp(sms.copy(items = List(301) { ReceiptArchive.Item("x") })))

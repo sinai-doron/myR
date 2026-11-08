@@ -138,6 +138,86 @@ class ReadWithAiTest {
     }
 
     @Test
+    fun aReceiptFromAbroad_isOfferedInItsCurrency_andKeptWithItsShekels() {
+        val applied = mutableListOf<AiDetails>()
+        val read = AiDetails(
+            store = "Żabka",
+            amount = 98.37,
+            currency = "PLN",
+            originalTotal = 123.45,
+            ilsRate = 0.796877,
+            rateDate = "2026-11-02",
+            vat = 23.08,
+        )
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(
+                    receipt = scan(),
+                    onBack = {},
+                    onReadWithAi = { AiRead.Read(read, emptyList()) },
+                    onApplyAi = { _, d -> applied += d },
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("read_with_ai").performClick()
+        composeTestRule.onNodeWithTag("ai_confirm").performClick()
+        composeTestRule.onNodeWithText("Amount paid (PLN)").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("ai_note_amount").assertIsDisplayed()
+        composeTestRule.onNodeWithText("VAT (PLN)").assertIsDisplayed()
+        // The user corrects the printed total: its shekels follow at the same rate.
+        composeTestRule.onNodeWithTag("ai_value_amount").performTextReplacement("100")
+        composeTestRule.onNodeWithTag("ai_save").performClick()
+        composeTestRule.waitUntil(5_000) { applied.isNotEmpty() }
+        assertEquals(
+            listOf(
+                AiDetails(
+                    store = "Żabka",
+                    amount = 79.69,
+                    currency = "PLN",
+                    originalTotal = 100.0,
+                    ilsRate = 0.796877,
+                    rateDate = "2026-11-02",
+                    vat = 23.08,
+                ),
+            ),
+            applied,
+        )
+    }
+
+    @Test
+    fun aReceiptFromAbroad_showsItsOwnCurrency_andItsShekelsBelow() {
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(
+                    receipt = scan().copy(
+                        totalAmount = 98.37,
+                        currency = "PLN",
+                        originalTotal = 123.45,
+                        ilsRate = 0.796877,
+                        rateDate = "2026-11-02",
+                        vatAmount = 23.08,
+                    ),
+                    onBack = {},
+                    items = listOf(ReceiptArchive.Item("Chleb", quantity = 2.0, unitPrice = 4.5, price = 9.0)),
+                )
+            }
+        }
+        val amount = composeTestRule.onNodeWithTag("amount").fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString()
+        assert(amount.contains("123.45") && !amount.contains("₪")) { amount }
+        composeTestRule.onNodeWithTag("amount_ils").assertIsDisplayed()
+        val note = composeTestRule.onNodeWithTag("amount_ils").fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString()
+        assert(note.contains("98.37") && note.contains("ECB")) { note }
+        composeTestRule.onNodeWithTag("items_toggle").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Chleb").performScrollTo().assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("item_row").fetchSemanticsNodes().forEach { node ->
+            val text = node.config.getOrElse(androidx.compose.ui.semantics.SemanticsProperties.Text) { emptyList() }.joinToString()
+            assert(!text.contains("₪")) { text }
+        }
+    }
+
+    @Test
     fun theBranchAndItems_areOffered_andKept() {
         val applied = mutableListOf<AiDetails>()
         val items = listOf(
@@ -180,7 +260,7 @@ class ReadWithAiTest {
         }
         composeTestRule.onNodeWithTag("detail_phone").assertIsDisplayed()
         composeTestRule.onNodeWithTag("item_row").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("items_header").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("items_toggle").performScrollTo().assertIsDisplayed().performClick()
         composeTestRule.onNodeWithText("צלי כתף טרי").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("2.126 kg × ₪99.90").performScrollTo().assertIsDisplayed()
     }

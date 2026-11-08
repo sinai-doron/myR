@@ -60,6 +60,17 @@ data class CapturedReceiptEntity(
     val storePhone: String? = null,
     /** The branch's name or number, as printed. Null: not known. */
     val branch: String? = null,
+    /**
+     * The ISO 4217 code of the currency the receipt is in, when not shekels. Its [vatAmount], items and
+     * [originalTotal] are in it; [totalAmount] is always shekels, converted at [ilsRate].
+     */
+    val currency: String? = null,
+    /** The total as printed, in [currency]. Null: not known, or a shekel receipt. */
+    val originalTotal: Double? = null,
+    /** Shekels per unit of [currency] that [totalAmount] was converted at. Null: not converted (or typed by the user). */
+    val ilsRate: Double? = null,
+    /** The day [ilsRate] is from (YYYY-MM-DD), the ECB's. */
+    val rateDate: String? = null,
 ) {
     /** The store, as the user named it or as the text said. */
     val store: String get() = storeName ?: senderLabel
@@ -214,9 +225,22 @@ interface ReceiptDao {
     )
     suspend fun setPdfTotal(clientId: String, amount: Double?, source: String)
 
-    /** The user's own amount, or none ([amount] null), which no read amount replaces. */
-    @Query("UPDATE captured_receipts SET totalAmount = :amount, totalSource = 'user' WHERE clientId = :clientId")
+    /**
+     * The user's own amount, or none ([amount] null), which no read amount replaces. In shekels: for a
+     * receipt in another currency, what they were charged, so it is no longer a conversion.
+     */
+    @Query(
+        "UPDATE captured_receipts SET totalAmount = :amount, totalSource = 'user', ilsRate = NULL, rateDate = NULL " +
+            "WHERE clientId = :clientId",
+    )
     suspend fun setUserTotal(clientId: String, amount: Double?)
+
+    /** A receipt's currency as read ([currency] null: shekels), its printed total, and the rate it was converted at. */
+    @Query(
+        "UPDATE captured_receipts SET currency = :currency, originalTotal = :originalTotal, ilsRate = :ilsRate, " +
+            "rateDate = :rateDate WHERE clientId = :clientId",
+    )
+    suspend fun setCurrency(clientId: String, currency: String?, originalTotal: Double?, ilsRate: Double?, rateDate: String?)
 
     /** The user's store name ([name] null: back to the text's sender). */
     @Query("UPDATE captured_receipts SET storeName = :name WHERE clientId = :clientId")
@@ -396,7 +420,7 @@ abstract class AppDatabase : RoomDatabase() {
 }
 
 /** The database version. A bump needs a migration in [MIGRATIONS]. */
-const val DB_VERSION = 10
+const val DB_VERSION = 11
 
 /** Versions 1 and 2 were development builds with no migrations: the only ones an update may wipe. */
 val WIPED_VERSIONS = intArrayOf(1, 2)
@@ -406,7 +430,7 @@ val WIPED_VERSIONS = intArrayOf(1, 2)
  * doesn't reach [AppDatabase]'s version.
  */
 val MIGRATIONS: Array<androidx.room.migration.Migration>
-    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+    get() = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
 
 /** v4 adds pdfStatus. A real migration, so an update never wipes the owner's receipts. */
 val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
@@ -477,5 +501,15 @@ val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_receipt_items_receiptClientId` ON `receipt_items` (`receiptClientId`)")
         db.execSQL(ITEMS_GO_WITH_RECEIPT)
+    }
+}
+
+/** v11 keeps a receipt's own currency, its printed total, and the shekel rate it was converted at. */
+val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN currency TEXT")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN originalTotal REAL")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN ilsRate REAL")
+        db.execSQL("ALTER TABLE captured_receipts ADD COLUMN rateDate TEXT")
     }
 }

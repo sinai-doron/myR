@@ -23,7 +23,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -158,9 +162,13 @@ fun ReceiptDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    if (receipt.totalAmount != null) {
+                    // A receipt from abroad shows what it says, in its own currency; its shekels go below.
+                    val headline = receipt.originalTotal?.takeIf { receipt.isForeign() }
+                        ?.let { formatMoney(it, receipt.currency) }
+                        ?: receipt.totalAmount?.let(::formatAmount)
+                    if (headline != null) {
                         Text(
-                            formatAmount(receipt.totalAmount),
+                            headline,
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                             color = Green,
                             modifier = Modifier
@@ -209,6 +217,14 @@ fun ReceiptDetailScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.testTag("ai_message"),
+                    )
+                }
+                shekelsNote(receipt)?.let { note ->
+                    Text(
+                        note,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("amount_ils"),
                     )
                 }
                 amountNote(receipt)?.let { note ->
@@ -277,13 +293,13 @@ fun ReceiptDetailScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
                 receipt.vatAmount?.let {
-                    DetailRow(stringResource(R.string.label_vat), formatAmount(it), tag = "detail_vat")
+                    DetailRow(stringResource(R.string.label_vat), formatMoney(it, receipt.currency), tag = "detail_vat")
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
                 DetailRow(stringResource(R.string.label_id), receipt.clientId)
             }
 
-            if (items.isNotEmpty()) ItemsCard(items)
+            if (items.isNotEmpty()) ItemsCard(items, receipt.currency)
 
             Spacer(Modifier.height(4.dp))
             val getPdf: () -> Unit = {
@@ -457,6 +473,25 @@ private fun PagePreview(pdfPath: String, onRotate: (suspend () -> Boolean)?) {
 
 private const val PREVIEW_WIDTH_PX = 720
 
+/** A receipt in another currency (ISO 4217), not shekels. */
+internal fun CapturedReceipt.isForeign(): Boolean = currency != null && currency != "ILS"
+
+/** For a receipt from abroad: what it counts as in the shekel budget, and how. */
+@Composable
+private fun shekelsNote(receipt: CapturedReceipt): String? = when {
+    !receipt.isForeign() || receipt.originalTotal == null -> null
+    receipt.totalAmount == null -> stringResource(R.string.amount_not_converted)
+    receipt.ilsRate != null && receipt.rateDate != null ->
+        stringResource(R.string.amount_converted, formatAmount(receipt.totalAmount), formatRateDay(receipt.rateDate))
+    else -> stringResource(R.string.amount_charged, formatAmount(receipt.totalAmount))
+}
+
+/** The ECB's day (YYYY-MM-DD) as the phone writes dates; as given when it isn't one. */
+private fun formatRateDay(day: String): String =
+    runCatching {
+        formatDay(java.time.LocalDate.parse(day).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli())
+    }.getOrDefault(day)
+
 /** Where the amount came from, when it was read rather than typed. */
 @Composable
 private fun amountNote(receipt: CapturedReceipt): String? = when {
@@ -464,6 +499,8 @@ private fun amountNote(receipt: CapturedReceipt): String? = when {
     receipt.totalAmount == null && (receipt.totalSource == TotalSource.NONE || receipt.isFile()) ->
         stringResource(R.string.amount_not_read)
     receipt.totalAmount == null -> null
+    // A receipt from abroad says how its shekels were found, above.
+    receipt.isForeign() && receipt.originalTotal != null -> null
     receipt.totalSource == TotalSource.PAGE -> stringResource(R.string.amount_from_page)
     receipt.totalSource == TotalSource.PDF -> stringResource(R.string.amount_from_pdf)
     else -> null
@@ -575,9 +612,12 @@ private fun openUri(context: android.content.Context, uri: String) {
     }
 }
 
-/** What was bought, folded until opened: one line each, with its quantity, price and discount. */
+/**
+ * What was bought, folded until opened: one line each, with its quantity, price and discount, in the
+ * receipt's own [currency].
+ */
 @Composable
-private fun ItemsCard(items: List<ReceiptArchive.Item>) {
+private fun ItemsCard(items: List<ReceiptArchive.Item>, currency: String?) {
     var open by remember { mutableStateOf(false) }
     SectionCard {
         Row(
@@ -587,9 +627,21 @@ private fun ItemsCard(items: List<ReceiptArchive.Item>) {
                 .testTag("items_header"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CardTitle(pluralStringResource(R.plurals.items_count, items.size, items.size))
-            Spacer(Modifier.weight(1f))
-            Text(stringResource(if (open) R.string.hide else R.string.show), color = Green)
+            // The title takes what's left: on its own it fills the row and pushes the button off it.
+            CardTitle(pluralStringResource(R.plurals.items_count, items.size, items.size), modifier = Modifier.weight(1f))
+            OutlinedButton(
+                onClick = { open = !open },
+                modifier = Modifier.testTag("items_toggle"),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 14.dp, end = 8.dp),
+            ) {
+                Text(stringResource(if (open) R.string.hide_items else R.string.show_items), color = Green)
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    if (open) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = Green,
+                )
+            }
         }
         if (open) {
             Spacer(Modifier.height(8.dp))
@@ -603,14 +655,14 @@ private fun ItemsCard(items: List<ReceiptArchive.Item>) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(item.name, style = MaterialTheme.typography.bodyLarge)
-                        itemDetail(item)?.let {
+                        itemDetail(item, currency)?.let {
                             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        item.price?.let { Text(formatAmount(it), style = MaterialTheme.typography.bodyLarge) }
+                        item.price?.let { Text(formatMoney(it, currency), style = MaterialTheme.typography.bodyLarge) }
                         item.discount?.takeIf { it > 0 }?.let {
-                            Text("-" + formatAmount(it), style = MaterialTheme.typography.bodySmall, color = Green)
+                            Text("-" + formatMoney(it, currency), style = MaterialTheme.typography.bodySmall, color = Green)
                         }
                     }
                 }
@@ -619,13 +671,13 @@ private fun ItemsCard(items: List<ReceiptArchive.Item>) {
     }
 }
 
-/** "0.342 kg × ₪52.85" or "2 × ₪11.90", from what the line printed. */
-private fun itemDetail(item: ReceiptArchive.Item): String? {
-    val q = item.quantity ?: return item.unitPrice?.let { "× " + formatAmount(it) }
+/** "0.342 kg × ₪52.85" or "2 × ₪11.90", from what the line printed, in the receipt's currency. */
+private fun itemDetail(item: ReceiptArchive.Item, currency: String?): String? {
+    val q = item.quantity ?: return item.unitPrice?.let { "× " + formatMoney(it, currency) }
     val qty = if (item.unit == ItemUnit.KG) "%.3f kg".format(java.util.Locale.US, q) else "%s".format(
         if (q == Math.floor(q)) q.toLong().toString() else q.toString(),
     )
-    return item.unitPrice?.let { "$qty × ${formatAmount(it)}" } ?: qty
+    return item.unitPrice?.let { "$qty × ${formatMoney(it, currency)}" } ?: qty
 }
 
 /** What the AI read from a receipt, in the app's terms: each null when it read nothing there. */
@@ -633,11 +685,11 @@ data class AiDetails(
     val store: String? = null,
     /** The purchase day, kept at the receipt's own time of day. */
     val purchasedAt: Long? = null,
-    /** In shekels. */
+    /** In shekels: for a receipt from abroad, [originalTotal] converted at [ilsRate]. */
     val amount: Double? = null,
     val invoiceNumber: String? = null,
     val businessId: String? = null,
-    /** In shekels. */
+    /** In the receipt's [currency]. */
     val vat: Double? = null,
     /** End of the last day, as the app keeps deadlines. */
     val returnBy: Long? = null,
@@ -645,8 +697,21 @@ data class AiDetails(
     val storeAddress: String? = null,
     val storePhone: String? = null,
     val branch: String? = null,
+    /** Prices in the receipt's [currency]. */
     val items: List<ReceiptArchive.Item> = emptyList(),
-)
+    /** The currency the receipt is in, ISO 4217 ("ILS", "PLN"). Null: not read. */
+    val currency: String? = null,
+    /** For a receipt from abroad: the total as printed, in [currency]. */
+    val originalTotal: Double? = null,
+    /** Shekels per unit of [currency], and the ECB's day for it; null when no rate could be had. */
+    val ilsRate: Double? = null,
+    val rateDate: String? = null,
+) {
+    val isForeign: Boolean get() = currency != null && currency != "ILS"
+}
+
+/** An amount converted to shekels, to the agora. */
+internal fun toShekels(amount: Double, ilsPerUnit: Double): Double = Math.round(amount * ilsPerUnit * 100) / 100.0
 
 /** What reading a receipt with AI came to, as the screen shows it. */
 sealed class AiRead {
@@ -670,6 +735,9 @@ internal data class AiRow(
     val now: String?,
     /** For a date: the moment it stands for, as the receipt stores it. */
     val millis: Long? = null,
+    /** For an amount from abroad: its currency, shown with the label, and what it comes to in shekels. */
+    val currency: String? = null,
+    val note: String? = null,
 )
 
 internal enum class AiField(val label: Int, val editable: Boolean) {
@@ -691,15 +759,27 @@ private fun money(v: Double) = "%.2f".format(java.util.Locale.US, v)
 
 /** The fields worth showing: read, and not the same as what the receipt already has. */
 internal fun aiRows(receipt: CapturedReceipt, d: AiDetails, items: List<ReceiptArchive.Item> = emptyList()): List<AiRow> = buildList {
-    fun add(field: AiField, read: String?, now: String?, millis: Long? = null) {
-        if (read != null && read != now) add(AiRow(field, read, now, millis))
+    fun add(field: AiField, read: String?, now: String?, millis: Long? = null, currency: String? = null, note: String? = null) {
+        if (read != null && read != now) add(AiRow(field, read, now, millis, currency, note))
     }
+    // What the receipt holds now in the read currency: its own figures if it is already in it.
+    val sameCurrency = (receipt.currency ?: "ILS") == (d.currency ?: "ILS")
     add(AiField.STORE, d.store, receipt.senderLabel.takeIf { it != receipt.textSender || !receipt.isFile() })
     add(AiField.DATE, d.purchasedAt?.let(::formatDay), formatDay(receipt.timestamp), d.purchasedAt)
-    add(AiField.AMOUNT, d.amount?.let(::money), receipt.totalAmount?.let(::money))
+    if (d.isForeign) {
+        val now = receipt.originalTotal?.takeIf { sameCurrency }?.let(::money) ?: receipt.totalAmount?.let(::formatAmount)
+        add(AiField.AMOUNT, d.originalTotal?.let(::money), now, currency = d.currency, note = d.amount?.let { "≈ " + formatAmount(it) })
+    } else {
+        add(AiField.AMOUNT, d.amount?.let(::money), receipt.totalAmount?.let(::money))
+    }
     add(AiField.INVOICE, d.invoiceNumber, receipt.invoiceNumber)
     add(AiField.BUSINESS_ID, d.businessId, receipt.businessId)
-    add(AiField.VAT, d.vat?.let(::money), receipt.vatAmount?.let(::money))
+    add(
+        AiField.VAT,
+        d.vat?.let(::money),
+        receipt.vatAmount?.let { if (sameCurrency) money(it) else formatMoney(it, receipt.currency) },
+        currency = d.currency.takeIf { d.isForeign },
+    )
     add(AiField.RETURN_BY, d.returnBy?.let(::formatDay), receipt.returnBy?.let(::formatDay), d.returnBy)
     add(AiField.WARRANTY, d.warrantyUntil?.let(::formatDay), receipt.warrantyUntil?.let(::formatDay), d.warrantyUntil)
     add(AiField.BRANCH, d.branch, receipt.branch)
@@ -740,7 +820,9 @@ private fun AiReviewDialog(rows: List<AiRow>, read: AiDetails, onDismiss: () -> 
                                 OutlinedTextField(
                                     value = values[row.field].orEmpty(),
                                     onValueChange = { values[row.field] = it },
-                                    label = { Text(stringResource(row.field.label)) },
+                                    label = {
+                                        Text(stringResource(row.field.label) + (row.currency?.let { " ($it)" } ?: ""))
+                                    },
                                     singleLine = true,
                                     modifier = Modifier.testTag("ai_value_${row.field.name.lowercase()}"),
                                 )
@@ -754,6 +836,9 @@ private fun AiReviewDialog(rows: List<AiRow>, read: AiDetails, onDismiss: () -> 
                                     },
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
+                            }
+                            row.note?.let {
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = Green, modifier = Modifier.testTag("ai_note_${row.field.name.lowercase()}"))
                             }
                             row.now?.let {
                                 Text(
@@ -788,10 +873,17 @@ private fun keptDetails(
     fun text(f: AiField) = values[f]?.trim()?.takeIf { kept[f] == true && it.isNotEmpty() }
     fun amount(f: AiField) = text(f)?.let { parseTypedAmount(it).getOrNull() }
     val byField = rows.associate { it.field to it }
+    // From abroad, the amount field holds the printed total; its shekels follow at the rate read with it.
+    val typed = amount(AiField.AMOUNT)
+    val original = typed.takeIf { read.isForeign }
     return AiDetails(
         store = text(AiField.STORE),
         purchasedAt = if (kept[AiField.DATE] == true) byField[AiField.DATE]?.millis else null,
-        amount = amount(AiField.AMOUNT),
+        amount = if (read.isForeign) original?.let { o -> read.ilsRate?.let { toShekels(o, it) } } else typed,
+        currency = read.currency,
+        originalTotal = original,
+        ilsRate = read.ilsRate.takeIf { original != null },
+        rateDate = read.rateDate.takeIf { original != null },
         invoiceNumber = text(AiField.INVOICE)?.take(40),
         businessId = text(AiField.BUSINESS_ID)?.filter { it.isDigit() }?.takeIf { it.length == 9 },
         vat = amount(AiField.VAT),

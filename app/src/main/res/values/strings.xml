@@ -232,6 +232,12 @@
     <string name="ai_confirm_body">The receipt goes to our server, which has Google\'s Gemini AI, in the European Union, read the store and its branch, address and phone, the date, amount, invoice number, tax ID, VAT, any return or warranty date, and the items bought. Neither keeps it. Each reading uses a little of your monthly AI allowance.</string>
     <string name="ai_confirm_ok">Read it</string>
     <string name="ai_not_now">Not now</string>
+    <string name="show_items">Show</string>
+    <string name="hide_items">Hide</string>
+    <string name="amount_converted">≈ %1$s in your budget, at the ECB rate of %2$s</string>
+    <string name="amount_charged">%1$s in your budget, as you entered it</string>
+    <string name="amount_not_converted">Not in your budget yet: add the amount you paid in ₪</string>
+    <string name="ai_no_rate">Couldn\'t get the exchange rate now, so the amount isn\'t converted to ₪. Try again later, or enter it yourself.</string>
     <string name="ai_check">Check each against the receipt. Only what\'s ticked is saved.</string>
     <string name="ai_not_found">The AI couldn\'t read this as a receipt.</string>
     <string name="ai_near_limit">You\'ve used most of this month\'s AI allowance.</string>

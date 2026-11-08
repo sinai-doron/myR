@@ -55,6 +55,18 @@ object Backend {
      * Has the backend's AI read a receipt's PDF: only when the user asked, for this one receipt.
      * Never logs what it read.
      */
+    /** The shekel rate for a receipt in another currency on its purchase date. Sends only the currency and date. */
+    suspend fun rate(context: Context, currency: String, date: String): Result<BackendApi.ExchangeRate> {
+        val auth = auth(context)
+        if (auth.currentUser() == null) return Result.failure(BackendException.Unauthorized)
+        return try {
+            Result.success(auth.withAccessToken { token -> api.rate(token, currency, date) })
+        } catch (e: BackendException) {
+            Log.w(TAG, "Rate failed: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
     suspend fun readReceipt(context: Context, pdf: File): Result<BackendApi.ReadResult> {
         val auth = auth(context)
         if (auth.currentUser() == null) return Result.failure(BackendException.Unauthorized)
