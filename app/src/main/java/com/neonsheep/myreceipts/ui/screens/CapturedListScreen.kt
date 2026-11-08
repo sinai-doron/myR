@@ -122,6 +122,12 @@ data class CapturedReceipt(
     val storeAddress: String? = null,
     val storePhone: String? = null,
     val branch: String? = null,
+    /** The receipt's own currency (ISO 4217) when not shekels: its VAT, items and [originalTotal] are in it. */
+    val currency: String? = null,
+    val originalTotal: Double? = null,
+    /** The shekel rate [totalAmount] was converted at; null when typed by the user or not converted. */
+    val ilsRate: Double? = null,
+    val rateDate: String? = null,
 )
 
 data class VendorSummary(
@@ -554,6 +560,17 @@ internal fun formatAmount(amount: Double): String =
     NumberFormat.getCurrencyInstance(Locale.getDefault()).apply {
         currency = Currency.getInstance("ILS")
     }.format(amount)
+
+/**
+ * An amount in a receipt's own currency ([currency] an ISO 4217 code; null or ILS: shekels), in the app's
+ * language: "PLN 123.45" / "zł123.45" as the phone's locale writes it, or "123.45 XYZ" for a code it doesn't know.
+ */
+internal fun formatMoney(amount: Double, currency: String?): String {
+    if (currency == null || currency == "ILS") return formatAmount(amount)
+    val known = runCatching { Currency.getInstance(currency) }.getOrNull()
+        ?: return "%.2f %s".format(Locale.US, amount, currency)
+    return NumberFormat.getCurrencyInstance(Locale.getDefault()).apply { this.currency = known }.format(amount)
+}
 
 /** Rounded to whole shekels, for a tile with little room. */
 internal fun formatWholeAmount(amount: Double): String =

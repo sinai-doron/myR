@@ -27,6 +27,8 @@ object ReceiptArchive {
     private val CLIENT_ID = Regex("[A-Za-z0-9-]{1,80}")
     private val BUSINESS_ID = Regex("[0-9]{9}")
     private val PHONE = Regex("[0-9+][0-9-]{5,19}")
+    private val CURRENCY = Regex("[A-Z]{3}")
+    private val DAY = Regex("""\d{4}-\d{2}-\d{2}""")
     const val ITEMS_MAX = 300
     private const val INVOICE_MAX = 40
     private val ORIGINS = setOf(Origin.SMS, Origin.LINK, Origin.FILE, Origin.PHOTO, Origin.SCAN)
@@ -100,6 +102,11 @@ object ReceiptArchive {
         val storePhone: String? = null,
         val branch: String? = null,
         val items: List<Item> = emptyList(),
+        // Added in app DB v11: a receipt from abroad.
+        val currency: String? = null,
+        val originalTotal: Double? = null,
+        val ilsRate: Double? = null,
+        val rateDate: String? = null,
     ) {
         fun toEntity(pdfPath: String?): CapturedReceiptEntity = CapturedReceiptEntity(
             link = link, senderLabel = senderLabel, timestamp = timestamp, clientId = clientId,
@@ -110,6 +117,7 @@ object ReceiptArchive {
             returnBy = returnBy, warrantyUntil = warrantyUntil, notDuplicate = notDuplicate, origin = origin,
             invoiceNumber = invoiceNumber, businessId = businessId, vatAmount = vatAmount,
             storeAddress = storeAddress, storePhone = storePhone, branch = branch,
+            currency = currency, originalTotal = originalTotal, ilsRate = ilsRate, rateDate = rateDate,
         )
 
         companion object {
@@ -120,6 +128,7 @@ object ReceiptArchive {
                 returnBy = e.returnBy, warrantyUntil = e.warrantyUntil, notDuplicate = e.notDuplicate, hasPdf = hasPdf,
                 invoiceNumber = e.invoiceNumber, businessId = e.businessId, vatAmount = e.vatAmount,
                 storeAddress = e.storeAddress, storePhone = e.storePhone, branch = e.branch,
+                currency = e.currency, originalTotal = e.originalTotal, ilsRate = e.ilsRate, rateDate = e.rateDate,
             )
         }
     }
@@ -227,6 +236,10 @@ object ReceiptArchive {
             (r.storeAddress?.length ?: 0) <= 200 &&
             (r.storePhone == null || PHONE.matches(r.storePhone)) &&
             (r.branch?.length ?: 0) <= 60 &&
+            (r.currency == null || CURRENCY.matches(r.currency)) &&
+            (r.originalTotal == null || (r.originalTotal >= 0 && r.originalTotal < 10_000_000)) &&
+            (r.ilsRate == null || (r.ilsRate > 0 && r.ilsRate < 100_000)) &&
+            (r.rateDate == null || DAY.matches(r.rateDate)) &&
             r.items.size <= ITEMS_MAX &&
             r.items.all { it.holdsUp() }
 

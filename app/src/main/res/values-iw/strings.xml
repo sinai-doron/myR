@@ -233,6 +233,12 @@
     <string name="ai_confirm_body">הקבלה נשלחת לשרת שלנו, ששולח אותה ל-Gemini, ה-AI של Google, באיחוד האירופי, כדי לקרוא את שם החנות, הסניף, הכתובת והטלפון שלו, התאריך, הסכום, מספר החשבונית, מספר העוסק, המע"מ, תאריך החזרה או האחריות אם יש, והפריטים שנקנו. אף אחד מהם לא שומר אותה. כל קריאה משתמשת בחלק קטן מהמכסה החודשית שלך ל-AI.</string>
     <string name="ai_confirm_ok">לקרוא</string>
     <string name="ai_not_now">לא עכשיו</string>
+    <string name="show_items">הצג</string>
+    <string name="hide_items">הסתר</string>
+    <string name="amount_converted">≈ %1$s בתקציב, לפי השער של הבנק המרכזי האירופי מ-%2$s</string>
+    <string name="amount_charged">%1$s בתקציב, כפי שהזנת</string>
+    <string name="amount_not_converted">עדיין לא בתקציב: הוסיפו את הסכום ששולם ב-₪</string>
+    <string name="ai_no_rate">לא הצלחנו לקבל עכשיו את שער החליפין, ולכן הסכום לא הומר ל-₪. נסו שוב מאוחר יותר, או הזינו אותו בעצמכם.</string>
     <string name="ai_check">כדאי לבדוק כל פרט מול הקבלה. נשמר רק מה שמסומן.</string>
     <string name="ai_not_found">ה-AI לא הצליח לקרוא את זה כקבלה.</string>
     <string name="ai_near_limit">השתמשת ברוב מכסת ה-AI של החודש.</string>

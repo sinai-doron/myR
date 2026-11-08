@@ -5,6 +5,7 @@ import com.neonsheep.myreceipts.data.ReceiptDates
 import com.neonsheep.myreceipts.net.BackendApi
 import com.neonsheep.myreceipts.ui.screens.AiDetails
 import com.neonsheep.myreceipts.ui.screens.AiRead
+import com.neonsheep.myreceipts.ui.screens.toShekels
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -334,6 +335,18 @@ class MainActivity : ComponentActivity() {
                                         d.storeAddress ?: e.storeAddress,
                                         d.storePhone ?: e.storePhone,
                                     )
+                                    // From abroad: its currency, and the printed total with the rate, when kept.
+                                    if (d.isForeign) {
+                                        val same = e.currency == d.currency
+                                        val kept = d.originalTotal != null
+                                        dao.setCurrency(
+                                            e.clientId,
+                                            d.currency,
+                                            if (kept) d.originalTotal else e.originalTotal.takeIf { same },
+                                            if (kept) d.ilsRate else e.ilsRate.takeIf { same },
+                                            if (kept) d.rateDate else e.rateDate.takeIf { same },
+                                        )
+                                    }
                                     if (d.items.isNotEmpty()) {
                                         AppDatabase.getInstance(this@MainActivity).itemDao().replace(
                                             e.clientId,
@@ -617,22 +630,35 @@ class MainActivity : ComponentActivity() {
         if (!was && smsGranted.value) backfillInboxIfNeeded()
     }
 
-    /** What the AI read, in the app's terms: dates on the phone's calendar, amounts only in shekels. */
-    private fun aiDetails(receipt: CapturedReceipt, read: BackendApi.ReadResult): AiDetails {
+    /**
+     * What the AI read, in the app's terms: dates on the phone's calendar. Amounts stay in the receipt's
+     * own currency; from abroad, its total is also converted to shekels at the ECB rate of its purchase day
+     * (asked of the backend with only the currency and the date), or left unconverted when there's no rate.
+     */
+    private suspend fun aiDetails(receipt: CapturedReceipt, read: BackendApi.ReadResult): AiDetails {
         val zone = java.time.ZoneId.systemDefault()
         fun day(text: String?): java.time.LocalDate? =
             text?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
-        val shekels = read.currency == "ILS"
+        val currency = read.currency?.takeIf { Regex("[A-Z]{3}").matches(it) }
+        val foreign = currency != null && currency != "ILS"
+        val total = read.total?.takeIf { foreign && it > 0 && it < 10_000_000 }
+        val bought = day(read.date) ?: java.time.Instant.ofEpochMilli(receipt.timestamp).atZone(zone).toLocalDate()
+        val rate = if (total != null) Backend.rate(this, currency!!, bought.toString()).getOrNull() else null
         return AiDetails(
+            currency = currency,
+            originalTotal = total,
+            ilsRate = rate?.ilsPerUnit,
+            rateDate = rate?.rateDate,
             store = read.store?.trim()?.takeIf { it.isNotEmpty() },
             // The day read, at the receipt's own time of day.
             purchasedAt = day(read.date)?.let {
                 ReceiptDates.onPickedDay(receipt.timestamp, it.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(), zone)
             },
-            amount = read.shekels,
+            amount = if (foreign) total?.let { t -> rate?.let { toShekels(t, it.ilsPerUnit) } } else read.shekels,
             invoiceNumber = read.invoiceNumber?.trim()?.takeIf { it.isNotEmpty() }?.take(40),
             businessId = read.businessId?.takeIf { Regex("[0-9]{9}").matches(it) },
-            vat = read.vat?.takeIf { shekels && it >= 0 },
+            // In the receipt's currency; none when the currency wasn't read.
+            vat = read.vat?.takeIf { currency != null && it >= 0 },
             returnBy = day(read.returnBy)?.let { ReceiptDates.returnBy(it.atStartOfDay(zone).toInstant().toEpochMilli(), 0, zone) },
             warrantyUntil = day(read.warrantyUntil)?.let { ReceiptDates.returnBy(it.atStartOfDay(zone).toInstant().toEpochMilli(), 0, zone) },
             storeAddress = read.storeAddress?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.take(200),
@@ -653,7 +679,11 @@ class MainActivity : ComponentActivity() {
         return Backend.readReceipt(this, pdf).fold(
             onSuccess = { read ->
                 val near = if (read.budget.nearLimit) listOf(R.string.ai_near_limit) else emptyList()
-                if (read.isReceipt) AiRead.Read(aiDetails(receipt, read), near)
+                if (read.isReceipt) {
+                    val details = aiDetails(receipt, read)
+                    val noRate = if (details.originalTotal != null && details.ilsRate == null) listOf(R.string.ai_no_rate) else emptyList()
+                    AiRead.Read(details, noRate + near)
+                }
                 else AiRead.NotFound(listOf(R.string.ai_not_found) + near)
             },
             onFailure = { error ->
@@ -737,4 +767,8 @@ fun CapturedReceiptEntity.toUiModel(): CapturedReceipt = CapturedReceipt(
     storeAddress = storeAddress,
     storePhone = storePhone,
     branch = branch,
+    currency = currency,
+    originalTotal = originalTotal,
+    ilsRate = ilsRate,
+    rateDate = rateDate,
 )
