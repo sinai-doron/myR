@@ -83,6 +83,61 @@ class ReadWithAiTest {
     }
 
     @Test
+    fun aFileJustAdded_asksFirst_andNotNow_opensTheEditScreen_withNothingSent() {
+        val reads = mutableListOf<String>()
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(
+                    receipt = scan(),
+                    onBack = {},
+                    askAiFirst = true,
+                    onEdit = { _, _ -> },
+                    onReadWithAi = { r -> reads += r.clientId; AiRead.NotFound(emptyList()) },
+                    onApplyAi = { _, _ -> },
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Read this receipt with AI?").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("ai_not_now").assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithTag("edit_store").assertIsDisplayed()
+        assertEquals(emptyList<String>(), reads)
+    }
+
+    @Test
+    fun aFileJustAdded_isReadOnlyOnceTheUserAgrees() {
+        val applied = mutableListOf<AiDetails>()
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(
+                    receipt = scan(),
+                    onBack = {},
+                    askAiFirst = true,
+                    onEdit = { _, _ -> },
+                    onReadWithAi = { AiRead.Read(AiDetails(store = "Aroma", amount = 41.9), emptyList()) },
+                    onApplyAi = { _, d -> applied += d },
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("ai_confirm").performClick()
+        composeTestRule.onNodeWithText("What the AI read").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("ai_save").performClick()
+        composeTestRule.waitUntil(5_000) { applied.isNotEmpty() }
+        assertEquals(listOf(AiDetails(store = "Aroma", amount = 41.9)), applied)
+        composeTestRule.onNodeWithTag("edit_store").assertDoesNotExist()
+    }
+
+    @Test
+    fun withoutAi_aFileJustAdded_opensTheEditScreen_asBefore() {
+        composeTestRule.setContent {
+            MyReceiptsTheme {
+                ReceiptDetailScreen(receipt = scan(), onBack = {}, askAiFirst = true, onEdit = { _, _ -> })
+            }
+        }
+        composeTestRule.onNodeWithTag("edit_store").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Read this receipt with AI?").assertDoesNotExist()
+    }
+
+    @Test
     fun theBranchAndItems_areOffered_andKept() {
         val applied = mutableListOf<AiDetails>()
         val items = listOf(

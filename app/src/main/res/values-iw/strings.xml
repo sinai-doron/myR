@@ -230,8 +230,9 @@
     <string name="ai_read">קריאת פרטים עם AI</string>
     <string name="ai_reading">קורא…</string>
     <string name="ai_confirm_title">לקרוא את הקבלה עם AI?</string>
-    <string name="ai_confirm_body">הקבלה נשלחת לשרת שלנו, ששולח אותה ל-Gemini, ה-AI של Google, באיחוד האירופי, כדי לקרוא את שם החנות, התאריך, הסכום, מספר החשבונית, מספר העוסק, המע"מ ותאריך החזרה או האחריות אם יש. אף אחד מהם לא שומר אותה. כל קריאה משתמשת בחלק קטן מהמכסה החודשית שלך ל-AI.</string>
+    <string name="ai_confirm_body">הקבלה נשלחת לשרת שלנו, ששולח אותה ל-Gemini, ה-AI של Google, באיחוד האירופי, כדי לקרוא את שם החנות, הסניף, הכתובת והטלפון שלו, התאריך, הסכום, מספר החשבונית, מספר העוסק, המע"מ, תאריך החזרה או האחריות אם יש, והפריטים שנקנו. אף אחד מהם לא שומר אותה. כל קריאה משתמשת בחלק קטן מהמכסה החודשית שלך ל-AI.</string>
     <string name="ai_confirm_ok">לקרוא</string>
+    <string name="ai_not_now">לא עכשיו</string>
     <string name="ai_check">כדאי לבדוק כל פרט מול הקבלה. נשמר רק מה שמסומן.</string>
     <string name="ai_not_found">ה-AI לא הצליח לקרוא את זה כקבלה.</string>
     <string name="ai_near_limit">השתמשת ברוב מכסת ה-AI של החודש.</string>
